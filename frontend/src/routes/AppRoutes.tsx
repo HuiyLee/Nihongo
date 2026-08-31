@@ -28,6 +28,10 @@ import BookmarksPage from '../pages/BookmarksPage';
 import ExerciseListPage from '../pages/exercises/ExerciseListPage';
 import ExerciseAttemptPage from '../pages/exercises/ExerciseAttemptPage';
 import ExerciseManagementPage from '../pages/admin/ExerciseManagementPage';
+import ExamListPage from '../pages/exams/ExamListPage';
+import ExamAttemptPage from '../pages/exams/ExamAttemptPage';
+import ExamResultPage from '../pages/exams/ExamResultPage';
+import ExamManagementPage from '../pages/admin/ExamManagementPage';
 
 /** Wraps a page with the authenticated-user shell (route guard + sidebar layout). */
 function userPage(node: ReactNode) {
@@ -69,9 +73,9 @@ export function AppRoutes() {
       <Route path="/reading" element={userPage(<ComingSoonPage title="Reading" />)} />
       <Route path="/exercises" element={userPage(<ExerciseListPage />)} />
       <Route path="/exercises/:id" element={userPage(<ExerciseAttemptPage />)} />
-      <Route path="/exams" element={userPage(<ComingSoonPage title="JLPT Exams" />)} />
-      <Route path="/exams/:id" element={userPage(<ComingSoonPage title="Exam" />)} />
-      <Route path="/exams/:id/result" element={userPage(<ComingSoonPage title="Exam result" />)} />
+      <Route path="/exams" element={userPage(<ExamListPage />)} />
+      <Route path="/exams/:id" element={userPage(<ExamAttemptPage />)} />
+      <Route path="/exams/:id/result" element={userPage(<ExamResultPage />)} />
       <Route path="/progress" element={userPage(<ComingSoonPage title="Progress" />)} />
       <Route path="/bookmarks" element={userPage(<BookmarksPage />)} />
       <Route path="/profile" element={userPage(<ProfilePage />)} />
@@ -85,7 +89,7 @@ export function AppRoutes() {
       <Route path="/admin/kanji" element={adminPage(<KanjiManagementPage />)} />
       <Route path="/admin/grammar" element={adminPage(<GrammarManagementPage />)} />
       <Route path="/admin/exercises" element={adminPage(<ExerciseManagementPage />)} />
-      <Route path="/admin/exams" element={adminPage(<ComingSoonPage title="Exam management" />)} />
+      <Route path="/admin/exams" element={adminPage(<ExamManagementPage />)} />
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

@@ -5,9 +5,9 @@ Built per `docs/Japanese_Learning_Requirements.md`, following the incremental
 development order the spec itself recommends (section 44).
 
 **Current state: Phase 1 (Foundation) + Phase 2 (Content management) +
-Phase 3 (User learning) + Phase 4 (Exercises) done.** Everything below is
-implemented and working; the remaining features (JLPT exams,
-listening/reading, streak, spaced repetition, notifications, AI features)
+Phase 3 (User learning) + Phase 4 (Exercises) + Phase 5 (JLPT exams) done.**
+Everything below is implemented and working; the remaining features
+(listening/reading, streak, spaced repetition, notifications, AI features)
 are intentionally left for later phases and appear in the UI as a "coming
 soon" placeholder so the full route map from the spec is already wired up.
 
@@ -130,6 +130,67 @@ soon" placeholder so the full route map from the spec is already wired up.
   answers on create" and "empty answerIds on submit" are rejected by
   validation.
 
+### Phase 5 - JLPT exams
+
+- Admin CRUD (`/api/admin/exams`) for exams, each with an owned, ordered list
+  of questions (`exam_questions`) - every question just points at an
+  existing `Exercise` (section 17.1) rather than duplicating question
+  content, so the exam-authoring UI is "pick exercises, set the order," and
+  grading reuses `ExerciseAnswer`'s `isCorrect` flags with zero new grading
+  code. `totalQuestions` is never accepted from the request - the backend
+  always computes it as `questions.size()` (same "don't trust the client for
+  a derived value" rule as the exam score, below).
+- Public browsing (`/api/exams`) reuses the Lesson/Exercise draft-visibility
+  pattern (BR-006/007/008): regular users only ever see `PUBLISHED` exams,
+  admins previewing the same endpoint see every status. Unlike Exercise,
+  there's no separate admin/public DTO split needed for *browsing* - the
+  public `ExamResponse` is a flat summary (id/title/duration/totalQuestions/
+  status/...) that never nests question content at all, so there's nothing
+  for it to leak regardless of who's asking. Nested question content (with
+  the isCorrect-masking `AdminExamResponse` vs the masked
+  `ExamAttemptResponse`) only exists in the admin-CRUD and attempt-taking
+  responses respectively.
+- The exam-taking flow (section 18, `POST /api/exams/{id}/start`,
+  `POST /api/exams/{id}/submit`, `GET /api/exams/{id}/result`):
+  - Starting a `DRAFT`/`ARCHIVED` exam is rejected (BR-008). Starting is
+    idempotent - if the caller already has a live `IN_PROGRESS` attempt, it's
+    resumed (same attempt id, same questions) instead of creating a
+    duplicate.
+  - **The backend, never the frontend, is the source of truth for the exam
+    clock** (explicit requirement, section 18: "the backend must not trust
+    the frontend timer"). The deadline is always recomputed server-side from
+    the DB-stored `startedAt + exam.durationMinutes` on every `start`/
+    `submit` call; a submit past that deadline marks the attempt `EXPIRED`
+    and is rejected (400, BR-009) rather than graded, no matter what the
+    client's own countdown claims. The frontend timer is purely a UX
+    countdown that auto-submits at zero as a convenience - the server would
+    reject a late submit even if that client-side code were buggy or
+    bypassed entirely.
+  - Grading (BR-010) reuses the exact same exact-set-match algorithm as
+    Exercise submission, just looped per question: the submitted answer-id
+    set must equal the correct answer-id set for a question to count as
+    correct. `score`/`correctCount`/`wrongCount` are always computed
+    server-side from that loop - a submit request never carries a score for
+    the server to trust. `GET /result` returns the latest concluded
+    (`COMPLETED` or `EXPIRED`) attempt, 404 if the learner hasn't finished
+    one yet.
+- Frontend: `/admin/exams` is a standalone admin page (same reasoning as
+  `/admin/exercises` - a dynamic `Form.List` of questions doesn't fit the
+  generic `CrudManager`), where each question row is a searchable dropdown
+  of existing exercises rather than an inline editor. `/exams` reuses
+  `LearningBrowsePage`; `/exams/:id` shows the exam summary with a Start
+  button, then switches in place to the question list with a live countdown
+  once started (auto-submitting at zero); `/exams/:id/result` shows the
+  score, correct/wrong counts, and a Retake button.
+- Integration tests: non-admin forbidden from admin exam endpoints, a draft
+  exam is invisible to a regular user (404) but visible to an admin,
+  starting a draft exam is rejected, starting twice resumes the same
+  attempt, submitting computes partial-credit scoring correctly, submitting
+  after the deadline (simulated by backdating the attempt's `startedAt`
+  directly in the test rather than an actual multi-minute sleep) is
+  rejected and marks the attempt `EXPIRED`, and `GET /result` 404s with no
+  finished attempt and returns the right data after one.
+
 ## Project layout
 
 ```
@@ -206,6 +267,6 @@ WHERE username = 'your_username';
 ## Next phases
 
 See `docs/Japanese_Learning_Requirements.md` sections 38 and 44 for the full
-roadmap: Phase 5 (JLPT exams), Phase 6
+roadmap: Phase 6
 (listening/reading/streak/spaced repetition/notifications), Phase 7
 (optional AI features).
