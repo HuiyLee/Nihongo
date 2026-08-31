@@ -18,6 +18,13 @@ import LessonManagementPage from '../pages/admin/LessonManagementPage';
 import VocabularyManagementPage from '../pages/admin/VocabularyManagementPage';
 import KanjiManagementPage from '../pages/admin/KanjiManagementPage';
 import GrammarManagementPage from '../pages/admin/GrammarManagementPage';
+import VocabularyListPage from '../pages/vocabulary/VocabularyListPage';
+import VocabularyFlashcardPage from '../pages/vocabulary/VocabularyFlashcardPage';
+import KanjiListPage from '../pages/kanji/KanjiListPage';
+import KanjiFlashcardPage from '../pages/kanji/KanjiFlashcardPage';
+import GrammarListPage from '../pages/grammar/GrammarListPage';
+import GrammarFlashcardPage from '../pages/grammar/GrammarFlashcardPage';
+import BookmarksPage from '../pages/BookmarksPage';
 
 /** Wraps a page with the authenticated-user shell (route guard + sidebar layout). */
 function userPage(node: ReactNode) {
@@ -49,15 +56,12 @@ export function AppRoutes() {
       <Route path="/dashboard" element={userPage(<DashboardPage />)} />
       <Route path="/lessons" element={userPage(<ComingSoonPage title="Lessons" />)} />
       <Route path="/lessons/:id" element={userPage(<ComingSoonPage title="Lesson detail" />)} />
-      <Route path="/vocabulary" element={userPage(<ComingSoonPage title="Vocabulary" />)} />
-      <Route
-        path="/vocabulary/:id"
-        element={userPage(<ComingSoonPage title="Vocabulary detail" />)}
-      />
-      <Route path="/kanji" element={userPage(<ComingSoonPage title="Kanji" />)} />
-      <Route path="/kanji/:id" element={userPage(<ComingSoonPage title="Kanji detail" />)} />
-      <Route path="/grammar" element={userPage(<ComingSoonPage title="Grammar" />)} />
-      <Route path="/grammar/:id" element={userPage(<ComingSoonPage title="Grammar detail" />)} />
+      <Route path="/vocabulary" element={userPage(<VocabularyListPage />)} />
+      <Route path="/vocabulary/:id" element={userPage(<VocabularyFlashcardPage />)} />
+      <Route path="/kanji" element={userPage(<KanjiListPage />)} />
+      <Route path="/kanji/:id" element={userPage(<KanjiFlashcardPage />)} />
+      <Route path="/grammar" element={userPage(<GrammarListPage />)} />
+      <Route path="/grammar/:id" element={userPage(<GrammarFlashcardPage />)} />
       <Route path="/listening" element={userPage(<ComingSoonPage title="Listening" />)} />
       <Route path="/reading" element={userPage(<ComingSoonPage title="Reading" />)} />
       <Route path="/exercises" element={userPage(<ComingSoonPage title="Exercises" />)} />
@@ -65,7 +69,7 @@ export function AppRoutes() {
       <Route path="/exams/:id" element={userPage(<ComingSoonPage title="Exam" />)} />
       <Route path="/exams/:id/result" element={userPage(<ComingSoonPage title="Exam result" />)} />
       <Route path="/progress" element={userPage(<ComingSoonPage title="Progress" />)} />
-      <Route path="/bookmarks" element={userPage(<ComingSoonPage title="Bookmarks" />)} />
+      <Route path="/bookmarks" element={userPage(<BookmarksPage />)} />
       <Route path="/profile" element={userPage(<ProfilePage />)} />
 
       {/* Admin (protected + ROLE_ADMIN) - section 27 */}

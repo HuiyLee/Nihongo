@@ -4,13 +4,12 @@ A web application for learning Japanese from beginner to advanced (JLPT N5-N1).
 Built per `docs/Japanese_Learning_Requirements.md`, following the incremental
 development order the spec itself recommends (section 44).
 
-**Current state: Phase 1 (Foundation) + Phase 2 (Content management)
-done.** Everything below is implemented and working; the remaining features
-(user-side vocabulary/Kanji/grammar learning + bookmarks, exercises, JLPT
-exams, listening/reading/streak/spaced repetition, notifications, AI
-features) are intentionally left for later phases and appear in the UI as a
-"coming soon" placeholder so the full route map from the spec is already
-wired up.
+**Current state: Phase 1 (Foundation) + Phase 2 (Content management) +
+Phase 3 (User learning) done.** Everything below is implemented and
+working; the remaining features (exercises, JLPT exams, listening/reading,
+streak, spaced repetition, notifications, AI features) are intentionally
+left for later phases and appear in the UI as a "coming soon" placeholder
+so the full route map from the spec is already wired up.
 
 ## What's implemented
 
@@ -53,6 +52,43 @@ wired up.
 - Integration tests covering level code/orderIndex uniqueness, admin-only
   write access (403 for regular users), the draft-lesson visibility rule,
   and vocabulary keyword search.
+
+### Phase 3 - User learning (progress, bookmarks, study sessions)
+
+- Per-user learning state on Vocabulary, Kanji, and Grammar (section 10):
+  `GET /api/{vocabularies|kanji|grammars}/{id}/progress` and
+  `POST /api/{vocabularies|kanji|grammars}/{id}/mark` (`{"outcome":"KNOWN"|"UNKNOWN"}`).
+  Marking KNOWN/UNKNOWN updates `status`/`correctCount`/`wrongCount` -
+  always scoped to the caller (never trusts a userId from the client). This
+  is deliberately simple bookkeeping, not the real spaced-repetition
+  algorithm - that belongs to a dedicated `SpacedRepetitionService` added in
+  a later phase (section 11).
+- Bookmarks (section 23 / BR-011): `POST/GET/DELETE /api/bookmarks`, plus a
+  `GET /api/bookmarks/exists` convenience check. Vocabulary/Kanji/Grammar
+  targets are validated to exist; duplicate bookmarks are rejected (409);
+  `READING` is accepted by the data model's enum but rejected with a clear
+  "not supported yet" error since there's no Reading entity yet.
+- Study sessions (section 21): `POST/GET /api/study-sessions` records a
+  finished study activity (`activityType`, optional `referenceId`,
+  `startedAt`/`endedAt`; duration is computed server-side). This lays the
+  groundwork for the streak feature (section 22), which isn't built yet -
+  the API exists now so a later phase doesn't also have to touch the
+  request layer; there's no frontend UI calling it yet.
+- Frontend: real Vocabulary/Kanji/Grammar pages replace the "coming soon"
+  placeholders - `/vocabulary`, `/kanji`, `/grammar` are searchable,
+  level-filterable card grids; `/vocabulary/:id`, `/kanji/:id`,
+  `/grammar/:id` are flip-card detail pages with Know/Still-learning
+  buttons and a bookmark toggle. `/bookmarks` lists everything the user has
+  bookmarked, filterable by type, with a remove action. All of this is
+  built from two generic, reusable components
+  (`components/learning/LearningBrowsePage.tsx`,
+  `components/learning/FlashcardView.tsx`) so the browse/search/filter and
+  flip-card/mark/bookmark logic exists once, not three times - the same
+  pattern `CrudManager.tsx` uses on the admin side.
+- Integration tests covering per-user isolation (marking an item for one
+  user never affects another user's progress or bookmarks or study
+  sessions), bookmark duplicate rejection, and the READING-not-supported
+  and target-not-found error cases.
 
 ## Project layout
 
@@ -130,7 +166,6 @@ WHERE username = 'your_username';
 ## Next phases
 
 See `docs/Japanese_Learning_Requirements.md` sections 38 and 44 for the full
-roadmap: Phase 3 (user learning progress + Vocabulary flashcards + bookmarks
-+ study sessions), Phase 4 (exercises), Phase 5 (JLPT exams), Phase 6
+roadmap: Phase 4 (exercises), Phase 5 (JLPT exams), Phase 6
 (listening/reading/streak/spaced repetition/notifications), Phase 7
 (optional AI features).
