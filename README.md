@@ -5,11 +5,11 @@ Built per `docs/Japanese_Learning_Requirements.md`, following the incremental
 development order the spec itself recommends (section 44).
 
 **Current state: Phase 1 (Foundation) + Phase 2 (Content management) +
-Phase 3 (User learning) done.** Everything below is implemented and
-working; the remaining features (exercises, JLPT exams, listening/reading,
-streak, spaced repetition, notifications, AI features) are intentionally
-left for later phases and appear in the UI as a "coming soon" placeholder
-so the full route map from the spec is already wired up.
+Phase 3 (User learning) + Phase 4 (Exercises) done.** Everything below is
+implemented and working; the remaining features (JLPT exams,
+listening/reading, streak, spaced repetition, notifications, AI features)
+are intentionally left for later phases and appear in the UI as a "coming
+soon" placeholder so the full route map from the spec is already wired up.
 
 ## What's implemented
 
@@ -90,6 +90,46 @@ so the full route map from the spec is already wired up.
   sessions), bookmark duplicate rejection, and the READING-not-supported
   and target-not-found error cases.
 
+### Phase 4 - Exercises (multiple choice, multiple answer, true/false, fill in blank)
+
+- Admin CRUD (`/api/admin/exercises`) for exercises, each with an owned list
+  of answer options (`answerText`, `isCorrect`, `orderIndex` - section
+  14.2/14.3). Updating an exercise replaces its answers wholesale rather
+  than diffing, which keeps the "delete whatever fell out of the list"
+  behavior (JPA `orphanRemoval`) simple and correct.
+- Public read (`/api/exercises`) and `POST /api/exercises/{id}/submit`
+  (section 14.4): submit takes `{"answerIds":[...]}` and returns
+  `{correct, score, explanation}`. Grading is an exact-set match between
+  the submitted answer ids and the stored correct ones, which works
+  uniformly for single-answer and multi-answer questions without needing
+  type-specific grading code.
+- The one rule that matters most here: **a learner's response never
+  contains `isCorrect`** on any answer option - only the admin-facing
+  response does (`AdminExerciseResponse` vs `ExerciseResponse`, backed by
+  separate mapper methods). Sending the answer key before submission would
+  make the whole feature pointless, so this is covered by an integration
+  test that asserts the field is absent, not just unused.
+- `type` supports all six values from the spec's data model
+  (`MULTIPLE_CHOICE`, `MULTIPLE_ANSWER`, `TRUE_FALSE`, `FILL_IN_BLANK`,
+  `MATCHING`, `LISTENING`), but only the first four have an attempt UI in
+  this phase, matching the Phase 4 scope in the requirements doc exactly;
+  Matching/Listening exercises can be created by an admin but show a "not
+  yet attemptable" message to learners instead of a broken UI.
+- Frontend: `/admin/exercises` is a standalone admin page (not the generic
+  `CrudManager`, since its answers are a dynamic list `CrudManager`'s flat
+  field config can't express) with a `Form.List`-based editor for adding/
+  removing/reordering answer rows. `/exercises` reuses the same
+  `LearningBrowsePage` grid Vocabulary/Kanji/Grammar use; `/exercises/:id`
+  is a dedicated attempt page (radio buttons for single-answer types,
+  checkboxes for `MULTIPLE_ANSWER`) that submits and shows correct/
+  incorrect plus the explanation.
+- Integration tests: non-admin forbidden from admin exercise endpoints, the
+  isCorrect-masking rule above, multiple-choice correct/incorrect grading,
+  multiple-answer exact-set grading (partial credit is not correct), an
+  answerId from a different exercise is rejected (400), and both "no
+  answers on create" and "empty answerIds on submit" are rejected by
+  validation.
+
 ## Project layout
 
 ```
@@ -166,6 +206,6 @@ WHERE username = 'your_username';
 ## Next phases
 
 See `docs/Japanese_Learning_Requirements.md` sections 38 and 44 for the full
-roadmap: Phase 4 (exercises), Phase 5 (JLPT exams), Phase 6
+roadmap: Phase 5 (JLPT exams), Phase 6
 (listening/reading/streak/spaced repetition/notifications), Phase 7
 (optional AI features).

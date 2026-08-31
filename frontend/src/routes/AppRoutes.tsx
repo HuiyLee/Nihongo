@@ -25,6 +25,9 @@ import KanjiFlashcardPage from '../pages/kanji/KanjiFlashcardPage';
 import GrammarListPage from '../pages/grammar/GrammarListPage';
 import GrammarFlashcardPage from '../pages/grammar/GrammarFlashcardPage';
 import BookmarksPage from '../pages/BookmarksPage';
+import ExerciseListPage from '../pages/exercises/ExerciseListPage';
+import ExerciseAttemptPage from '../pages/exercises/ExerciseAttemptPage';
+import ExerciseManagementPage from '../pages/admin/ExerciseManagementPage';
 
 /** Wraps a page with the authenticated-user shell (route guard + sidebar layout). */
 function userPage(node: ReactNode) {
@@ -64,7 +67,8 @@ export function AppRoutes() {
       <Route path="/grammar/:id" element={userPage(<GrammarFlashcardPage />)} />
       <Route path="/listening" element={userPage(<ComingSoonPage title="Listening" />)} />
       <Route path="/reading" element={userPage(<ComingSoonPage title="Reading" />)} />
-      <Route path="/exercises" element={userPage(<ComingSoonPage title="Exercises" />)} />
+      <Route path="/exercises" element={userPage(<ExerciseListPage />)} />
+      <Route path="/exercises/:id" element={userPage(<ExerciseAttemptPage />)} />
       <Route path="/exams" element={userPage(<ComingSoonPage title="JLPT Exams" />)} />
       <Route path="/exams/:id" element={userPage(<ComingSoonPage title="Exam" />)} />
       <Route path="/exams/:id/result" element={userPage(<ComingSoonPage title="Exam result" />)} />
@@ -80,10 +84,7 @@ export function AppRoutes() {
       <Route path="/admin/vocabulary" element={adminPage(<VocabularyManagementPage />)} />
       <Route path="/admin/kanji" element={adminPage(<KanjiManagementPage />)} />
       <Route path="/admin/grammar" element={adminPage(<GrammarManagementPage />)} />
-      <Route
-        path="/admin/exercises"
-        element={adminPage(<ComingSoonPage title="Exercise management" />)}
-      />
+      <Route path="/admin/exercises" element={adminPage(<ExerciseManagementPage />)} />
       <Route path="/admin/exams" element={adminPage(<ComingSoonPage title="Exam management" />)} />
 
       <Route path="*" element={<NotFoundPage />} />
