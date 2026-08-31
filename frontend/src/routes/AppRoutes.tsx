@@ -13,6 +13,11 @@ import ProfilePage from '../pages/ProfilePage';
 import ComingSoonPage from '../pages/ComingSoonPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage';
+import LevelManagementPage from '../pages/admin/LevelManagementPage';
+import LessonManagementPage from '../pages/admin/LessonManagementPage';
+import VocabularyManagementPage from '../pages/admin/VocabularyManagementPage';
+import KanjiManagementPage from '../pages/admin/KanjiManagementPage';
+import GrammarManagementPage from '../pages/admin/GrammarManagementPage';
 
 /** Wraps a page with the authenticated-user shell (route guard + sidebar layout). */
 function userPage(node: ReactNode) {
@@ -66,23 +71,11 @@ export function AppRoutes() {
       {/* Admin (protected + ROLE_ADMIN) - section 27 */}
       <Route path="/admin" element={adminPage(<AdminDashboardPage />)} />
       <Route path="/admin/users" element={adminPage(<ComingSoonPage title="User management" />)} />
-      <Route
-        path="/admin/levels"
-        element={adminPage(<ComingSoonPage title="Level management" />)}
-      />
-      <Route
-        path="/admin/lessons"
-        element={adminPage(<ComingSoonPage title="Lesson management" />)}
-      />
-      <Route
-        path="/admin/vocabulary"
-        element={adminPage(<ComingSoonPage title="Vocabulary management" />)}
-      />
-      <Route path="/admin/kanji" element={adminPage(<ComingSoonPage title="Kanji management" />)} />
-      <Route
-        path="/admin/grammar"
-        element={adminPage(<ComingSoonPage title="Grammar management" />)}
-      />
+      <Route path="/admin/levels" element={adminPage(<LevelManagementPage />)} />
+      <Route path="/admin/lessons" element={adminPage(<LessonManagementPage />)} />
+      <Route path="/admin/vocabulary" element={adminPage(<VocabularyManagementPage />)} />
+      <Route path="/admin/kanji" element={adminPage(<KanjiManagementPage />)} />
+      <Route path="/admin/grammar" element={adminPage(<GrammarManagementPage />)} />
       <Route
         path="/admin/exercises"
         element={adminPage(<ComingSoonPage title="Exercise management" />)}

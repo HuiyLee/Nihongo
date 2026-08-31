@@ -13,3 +13,14 @@ export interface PageResponse<T> {
   totalElements: number;
   totalPages: number;
 }
+
+/** Common ?page&size&sort&keyword&... query params accepted by list endpoints. */
+export interface ListParams {
+  page?: number;
+  size?: number;
+  sort?: string;
+  keyword?: string;
+  levelId?: number;
+  lessonId?: number;
+  status?: string;
+}
