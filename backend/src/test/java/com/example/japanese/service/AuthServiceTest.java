@@ -91,7 +91,7 @@ class AuthServiceTest {
         when(userRepository.existsByUsername("user01")).thenReturn(false);
         when(userRepository.existsByEmail("user01@example.com")).thenReturn(false);
         when(roleRepository.findByName(Role.USER))
-                .thenReturn(java.util.Optional.of(Role.builder().id(1L).name(Role.USER).build()));
+                .thenReturn(java.util.Optional.of(Role.builder().name(Role.USER).build()));
         when(passwordEncoder.encode("Password1")).thenReturn("hashed-password");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(userMapper.toResponse(any(User.class))).thenReturn(
