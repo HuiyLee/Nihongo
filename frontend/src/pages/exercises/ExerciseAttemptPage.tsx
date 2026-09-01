@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, Checkbox, Radio, Space, Tag, Typography, Alert, message } from 'antd';
-import { ArrowLeftOutlined, SoundOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined } from '@ant-design/icons';
 import { exerciseApi } from '../../api/exerciseApi';
+import { AudioPlayer } from '../../components/learning/AudioPlayer';
 import { LoadingState } from '../../components/LoadingState';
 import { ErrorState } from '../../components/ErrorState';
 import { getErrorMessage } from '../../utils/errors';
@@ -95,8 +96,7 @@ export default function ExerciseAttemptPage() {
         )}
         {exercise.audioUrl && (
           <Paragraph>
-            <SoundOutlined />{' '}
-            <audio controls src={exercise.audioUrl} style={{ verticalAlign: 'middle' }} />
+            <AudioPlayer src={exercise.audioUrl} />
           </Paragraph>
         )}
 

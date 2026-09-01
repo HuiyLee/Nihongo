@@ -1,19 +1,22 @@
 package com.example.japanese.service;
 
+import com.example.japanese.dto.request.StudySessionRequest;
 import com.example.japanese.dto.response.LearningProgressResponse;
 import com.example.japanese.entity.Grammar;
 import com.example.japanese.entity.LearningStatus;
 import com.example.japanese.entity.MarkOutcome;
+import com.example.japanese.entity.StudyActivityType;
 import com.example.japanese.entity.User;
 import com.example.japanese.entity.UserGrammar;
 import com.example.japanese.exception.ResourceNotFoundException;
 import com.example.japanese.repository.GrammarRepository;
 import com.example.japanese.repository.UserGrammarRepository;
 import com.example.japanese.repository.UserRepository;
-import com.example.japanese.util.LearningStateUpdater;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +25,8 @@ public class UserGrammarService {
     private final UserGrammarRepository userGrammarRepository;
     private final GrammarRepository grammarRepository;
     private final UserRepository userRepository;
+    private final SpacedRepetitionService spacedRepetitionService;
+    private final StudySessionService studySessionService;
 
     @Transactional(readOnly = true)
     public LearningProgressResponse getProgress(Long userId, Long grammarId) {
@@ -46,9 +51,18 @@ public class UserGrammarService {
                     return created;
                 });
 
-        LearningStateUpdater.apply(state, outcome);
+        spacedRepetitionService.apply(state, outcome);
+        LearningProgressResponse response = toResponse(userGrammarRepository.save(state));
 
-        return toResponse(userGrammarRepository.save(state));
+        LocalDateTime now = LocalDateTime.now();
+        StudySessionRequest session = new StudySessionRequest();
+        session.setActivityType(StudyActivityType.GRAMMAR);
+        session.setReferenceId(grammarId);
+        session.setStartedAt(now);
+        session.setEndedAt(now);
+        studySessionService.record(userId, session);
+
+        return response;
     }
 
     private static LearningProgressResponse toResponse(UserGrammar state) {

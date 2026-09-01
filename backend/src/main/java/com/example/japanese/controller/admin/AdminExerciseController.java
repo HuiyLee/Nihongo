@@ -34,13 +34,14 @@ public class AdminExerciseController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long levelId,
             @RequestParam(required = false) Long lessonId,
+            @RequestParam(required = false) Long readingId,
             @RequestParam(required = false) ExerciseType type,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
             @RequestParam(required = false) String sort
     ) {
         return ApiResponse.success(
-                exerciseService.searchForAdmin(keyword, levelId, lessonId, type, PageableFactory.build(page, size, sort))
+                exerciseService.searchForAdmin(keyword, levelId, lessonId, readingId, type, PageableFactory.build(page, size, sort))
         );
     }
 

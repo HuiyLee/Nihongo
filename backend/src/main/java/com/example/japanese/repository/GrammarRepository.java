@@ -23,4 +23,7 @@ public interface GrammarRepository extends JpaRepository<Grammar, Long> {
             @Param("lessonId") Long lessonId,
             Pageable pageable
     );
+
+    /** Requirements section 20 - denominator for the Lessons progress approximation. */
+    long countByLessonIsNotNull();
 }

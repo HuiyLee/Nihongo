@@ -10,6 +10,9 @@ import org.springframework.data.repository.query.Param;
 
 public interface ExamRepository extends JpaRepository<Exam, Long> {
 
+    /** Requirements section 20 - denominator for the Exams progress percentage. */
+    long countByStatus(ContentStatus status);
+
     @Query("""
             select e from Exam e
             where (:keyword is null or lower(e.title) like lower(concat('%', :keyword, '%')))

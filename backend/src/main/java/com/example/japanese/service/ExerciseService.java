@@ -2,6 +2,7 @@ package com.example.japanese.service;
 
 import com.example.japanese.dto.request.ExerciseAnswerRequest;
 import com.example.japanese.dto.request.ExerciseRequest;
+import com.example.japanese.dto.request.StudySessionRequest;
 import com.example.japanese.dto.request.SubmitExerciseRequest;
 import com.example.japanese.dto.response.AdminExerciseResponse;
 import com.example.japanese.dto.response.ExerciseResponse;
@@ -12,18 +13,22 @@ import com.example.japanese.entity.ExerciseAnswer;
 import com.example.japanese.entity.ExerciseType;
 import com.example.japanese.entity.Lesson;
 import com.example.japanese.entity.Level;
+import com.example.japanese.entity.Reading;
+import com.example.japanese.entity.StudyActivityType;
 import com.example.japanese.exception.InvalidRequestException;
 import com.example.japanese.exception.ResourceNotFoundException;
 import com.example.japanese.mapper.ExerciseMapper;
 import com.example.japanese.repository.ExerciseRepository;
 import com.example.japanese.repository.LessonRepository;
 import com.example.japanese.repository.LevelRepository;
+import com.example.japanese.repository.ReadingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -42,13 +47,15 @@ public class ExerciseService {
     private final ExerciseRepository exerciseRepository;
     private final LevelRepository levelRepository;
     private final LessonRepository lessonRepository;
+    private final ReadingRepository readingRepository;
     private final ExerciseMapper exerciseMapper;
+    private final StudySessionService studySessionService;
 
     @Transactional(readOnly = true)
     public PageResponse<AdminExerciseResponse> searchForAdmin(
-            String keyword, Long levelId, Long lessonId, ExerciseType type, Pageable pageable
+            String keyword, Long levelId, Long lessonId, Long readingId, ExerciseType type, Pageable pageable
     ) {
-        Page<Exercise> page = exerciseRepository.search(blankToNull(keyword), levelId, lessonId, type, pageable);
+        Page<Exercise> page = exerciseRepository.search(blankToNull(keyword), levelId, lessonId, readingId, type, pageable);
         return PageResponse.of(page, exerciseMapper::toAdminResponse);
     }
 
@@ -59,9 +66,9 @@ public class ExerciseService {
 
     @Transactional(readOnly = true)
     public PageResponse<ExerciseResponse> search(
-            String keyword, Long levelId, Long lessonId, ExerciseType type, Pageable pageable
+            String keyword, Long levelId, Long lessonId, Long readingId, ExerciseType type, Pageable pageable
     ) {
-        Page<Exercise> page = exerciseRepository.search(blankToNull(keyword), levelId, lessonId, type, pageable);
+        Page<Exercise> page = exerciseRepository.search(blankToNull(keyword), levelId, lessonId, readingId, type, pageable);
         return PageResponse.of(page, exerciseMapper::toResponse);
     }
 
@@ -74,6 +81,7 @@ public class ExerciseService {
     public AdminExerciseResponse create(ExerciseRequest request) {
         Exercise exercise = Exercise.builder()
                 .lesson(resolveLesson(request.getLessonId()))
+                .reading(resolveReading(request.getReadingId()))
                 .level(getLevelOrThrow(request.getLevelId()))
                 .type(request.getType())
                 .question(request.getQuestion())
@@ -93,6 +101,7 @@ public class ExerciseService {
         Exercise exercise = getOrThrow(id);
 
         exercise.setLesson(resolveLesson(request.getLessonId()));
+        exercise.setReading(resolveReading(request.getReadingId()));
         exercise.setLevel(getLevelOrThrow(request.getLevelId()));
         exercise.setType(request.getType());
         exercise.setQuestion(request.getQuestion());
@@ -115,7 +124,7 @@ public class ExerciseService {
     }
 
     @Transactional
-    public SubmitExerciseResponse submit(Long exerciseId, SubmitExerciseRequest request) {
+    public SubmitExerciseResponse submit(Long userId, Long exerciseId, SubmitExerciseRequest request) {
         Exercise exercise = getOrThrow(exerciseId);
 
         Set<Long> validAnswerIds = exercise.getAnswers().stream()
@@ -135,6 +144,19 @@ public class ExerciseService {
         // Exact match: every correct option chosen, no incorrect option
         // chosen - works uniformly for single-answer and multi-answer types.
         boolean correct = submittedIds.equals(correctAnswerIds);
+
+        // Requirements section 15/21/22 - only Listening exercises count as a
+        // dedicated study activity for the streak; the other exercise types
+        // are graded practice without their own StudySession row.
+        if (exercise.getType() == ExerciseType.LISTENING) {
+            LocalDateTime now = LocalDateTime.now();
+            StudySessionRequest session = new StudySessionRequest();
+            session.setActivityType(StudyActivityType.LISTENING);
+            session.setReferenceId(exerciseId);
+            session.setStartedAt(now);
+            session.setEndedAt(now);
+            studySessionService.record(userId, session);
+        }
 
         return SubmitExerciseResponse.builder()
                 .correct(correct)
@@ -169,6 +191,14 @@ public class ExerciseService {
         }
         return lessonRepository.findById(lessonId)
                 .orElseThrow(() -> new ResourceNotFoundException("Lesson not found: " + lessonId));
+    }
+
+    private Reading resolveReading(Long readingId) {
+        if (readingId == null) {
+            return null;
+        }
+        return readingRepository.findById(readingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reading not found: " + readingId));
     }
 
     private String blankToNull(String value) {

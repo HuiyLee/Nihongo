@@ -45,6 +45,7 @@ class UserLearningIntegrationTest {
     private String adminToken;
     private String userAToken;
     private String userBToken;
+    private long levelId;
     private long vocabularyId;
     private long kanjiId;
 
@@ -61,7 +62,7 @@ class UserLearningIntegrationTest {
         userAToken = registerAndLogin("learning_user_a", false);
         userBToken = registerAndLogin("learning_user_b", false);
 
-        long levelId = createLevel();
+        levelId = createLevel();
         vocabularyId = createVocabulary(levelId);
         kanjiId = createKanji(levelId);
     }
@@ -128,6 +129,20 @@ class UserLearningIntegrationTest {
                 "levelId", levelId, "character", "学", "meaning", "study", "onyomi", "ガク", "kunyomi", "まな.ぶ"
         );
         String responseJson = mockMvc.perform(post("/api/admin/kanji")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(responseJson).path("data").path("id").asLong();
+    }
+
+    private long createReading(long levelId) throws Exception {
+        Map<String, Object> body = Map.of(
+                "levelId", levelId, "title", "Reading Passage", "content", "本文です",
+                "translation", "This is the body text", "difficulty", "EASY"
+        );
+        String responseJson = mockMvc.perform(post("/api/admin/readings")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(body)))
@@ -203,14 +218,27 @@ class UserLearningIntegrationTest {
     }
 
     @Test
-    void bookmark_targetTypeReading_isRejectedAsNotYetSupported() throws Exception {
-        Map<String, Object> body = Map.of("targetType", "READING", "targetId", 1L);
+    void bookmark_targetTypeReading_isSupported() throws Exception {
+        long readingId = createReading(levelId);
+        Map<String, Object> body = Map.of("targetType", "READING", "targetId", readingId);
 
         mockMvc.perform(post("/api/bookmarks")
                         .header("Authorization", "Bearer " + userAToken)
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.displayText").value("Reading Passage"));
+    }
+
+    @Test
+    void bookmark_targetTypeReading_forNonExistentTarget_returnsNotFound() throws Exception {
+        Map<String, Object> body = Map.of("targetType", "READING", "targetId", 999999L);
+
+        mockMvc.perform(post("/api/bookmarks")
+                        .header("Authorization", "Bearer " + userAToken)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isNotFound());
     }
 
     @Test

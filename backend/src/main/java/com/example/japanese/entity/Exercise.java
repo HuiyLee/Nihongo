@@ -36,6 +36,11 @@ public class Exercise extends BaseEntity {
     @JoinColumn(name = "lesson_id")
     private Lesson lesson;
 
+    /** Requirements section 16 - optional comprehension question attached to a reading passage. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reading_id")
+    private Reading reading;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "level_id", nullable = false)
     private Level level;

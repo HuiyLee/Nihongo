@@ -1,3 +1,5 @@
+import type { ExerciseDifficulty } from './exercise';
+
 export type ContentStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 
 export const CONTENT_STATUS_OPTIONS: { label: string; value: ContentStatus }[] = [
@@ -129,4 +131,32 @@ export interface GrammarRequest {
   example?: string;
   exampleMeaning?: string;
   notes?: string;
+}
+
+/**
+ * Requirements section 16. No status field (unlike Lesson/Exam) - every
+ * reading is publicly browsable as soon as it's created. `translation` is
+ * only present once `completed` is true (or always, for an admin caller) -
+ * see ReadingService on the backend. `difficulty` reuses ExerciseDifficulty
+ * rather than a new enum.
+ */
+export interface Reading {
+  id: number;
+  levelId: number;
+  levelCode: string;
+  title: string;
+  content: string;
+  translation?: string;
+  difficulty: ExerciseDifficulty;
+  completed?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReadingRequest {
+  levelId: number;
+  title: string;
+  content: string;
+  translation?: string;
+  difficulty: ExerciseDifficulty;
 }

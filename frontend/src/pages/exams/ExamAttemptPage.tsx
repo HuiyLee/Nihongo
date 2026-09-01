@@ -15,6 +15,7 @@ import {
 } from 'antd';
 import { ArrowLeftOutlined, ClockCircleOutlined, OrderedListOutlined } from '@ant-design/icons';
 import { examApi } from '../../api/examApi';
+import { AudioPlayer } from '../../components/learning/AudioPlayer';
 import { LoadingState } from '../../components/LoadingState';
 import { ErrorState } from '../../components/ErrorState';
 import { getErrorMessage } from '../../utils/errors';
@@ -252,6 +253,11 @@ export default function ExamAttemptPage() {
             <Title level={5} style={{ marginTop: 8 }}>
               {q.exercise.question}
             </Title>
+            {q.exercise.audioUrl && (
+              <div style={{ marginBottom: 12 }}>
+                <AudioPlayer src={q.exercise.audioUrl} />
+              </div>
+            )}
 
             {!isSupported ? (
               <Alert type="info" showIcon message="This question type isn't attemptable yet" />

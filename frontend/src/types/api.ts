@@ -22,5 +22,6 @@ export interface ListParams {
   keyword?: string;
   levelId?: number;
   lessonId?: number;
+  readingId?: number;
   status?: string;
 }

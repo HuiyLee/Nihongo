@@ -7,14 +7,15 @@ import com.example.japanese.entity.Bookmark;
 import com.example.japanese.entity.BookmarkTargetType;
 import com.example.japanese.entity.Grammar;
 import com.example.japanese.entity.Kanji;
+import com.example.japanese.entity.Reading;
 import com.example.japanese.entity.User;
 import com.example.japanese.entity.Vocabulary;
 import com.example.japanese.exception.DuplicateResourceException;
-import com.example.japanese.exception.InvalidRequestException;
 import com.example.japanese.exception.ResourceNotFoundException;
 import com.example.japanese.repository.BookmarkRepository;
 import com.example.japanese.repository.GrammarRepository;
 import com.example.japanese.repository.KanjiRepository;
+import com.example.japanese.repository.ReadingRepository;
 import com.example.japanese.repository.UserRepository;
 import com.example.japanese.repository.VocabularyRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,9 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Requirements section 23 / BR-011. targetId is validated against the real
- * Vocabulary/Kanji/Grammar tables before a bookmark is created; READING is
- * accepted by the enum (per the data model in section 23) but rejected here
- * since no Reading entity exists yet in this phase.
+ * Vocabulary/Kanji/Grammar/Reading tables before a bookmark is created.
  */
 @Service
 @RequiredArgsConstructor
@@ -37,6 +36,7 @@ public class BookmarkService {
     private final VocabularyRepository vocabularyRepository;
     private final KanjiRepository kanjiRepository;
     private final GrammarRepository grammarRepository;
+    private final ReadingRepository readingRepository;
     private final UserRepository userRepository;
 
     @Transactional
@@ -101,7 +101,11 @@ public class BookmarkService {
                         .orElseThrow(() -> new ResourceNotFoundException("Grammar not found: " + targetId));
                 yield grammar.getPattern();
             }
-            case READING -> throw new InvalidRequestException("Bookmarking reading passages is not supported yet");
+            case READING -> {
+                Reading reading = readingRepository.findById(targetId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Reading not found: " + targetId));
+                yield reading.getTitle();
+            }
         };
     }
 
@@ -112,7 +116,7 @@ public class BookmarkService {
                 case VOCABULARY -> vocabularyRepository.findById(targetId).map(Vocabulary::getWord).orElse(null);
                 case KANJI -> kanjiRepository.findById(targetId).map(Kanji::getCharacter).orElse(null);
                 case GRAMMAR -> grammarRepository.findById(targetId).map(Grammar::getPattern).orElse(null);
-                case READING -> null;
+                case READING -> readingRepository.findById(targetId).map(Reading::getTitle).orElse(null);
             };
         } catch (RuntimeException ex) {
             return null;

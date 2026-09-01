@@ -28,6 +28,7 @@ const NAV_ITEMS = [
   { key: '/admin/grammar', icon: <ReadOutlined />, label: 'Grammar' },
   { key: '/admin/exercises', icon: <FormOutlined />, label: 'Exercises' },
   { key: '/admin/exams', icon: <TrophyOutlined />, label: 'Exams' },
+  { key: '/admin/readings', icon: <ReadOutlined />, label: 'Reading' },
 ];
 
 export function AdminLayout({ children }: { children: ReactNode }) {

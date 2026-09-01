@@ -11,12 +11,18 @@ export const EXERCISE_TYPE_OPTIONS: { label: string; value: ExerciseType }[] = [
   { label: 'Listening', value: 'LISTENING' },
 ];
 
-/** Types with a "select the right option(s)" submit UI - what this phase's attempt page renders. */
+/**
+ * Types with a "select the right option(s)" submit UI - what this phase's
+ * attempt page renders. LISTENING is graded exactly the same way as the
+ * others (see ExerciseService.submit on the backend), it just also plays
+ * audio via AudioPlayer - see ExerciseAttemptPage/ExamAttemptPage.
+ */
 export const SELECTABLE_EXERCISE_TYPES: ExerciseType[] = [
   'MULTIPLE_CHOICE',
   'MULTIPLE_ANSWER',
   'TRUE_FALSE',
   'FILL_IN_BLANK',
+  'LISTENING',
 ];
 
 export type ExerciseDifficulty = 'EASY' | 'MEDIUM' | 'HARD';
@@ -49,6 +55,8 @@ interface ExerciseBase {
   id: number;
   lessonId?: number;
   lessonTitle?: string;
+  readingId?: number;
+  readingTitle?: string;
   levelId: number;
   levelCode: string;
   type: ExerciseType;
@@ -77,6 +85,7 @@ export interface ExerciseAnswerRequest {
 
 export interface ExerciseRequest {
   lessonId?: number;
+  readingId?: number;
   levelId: number;
   type: ExerciseType;
   question: string;

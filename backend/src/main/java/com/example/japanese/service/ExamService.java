@@ -3,6 +3,7 @@ package com.example.japanese.service;
 import com.example.japanese.dto.request.ExamAnswerSubmission;
 import com.example.japanese.dto.request.ExamQuestionRequest;
 import com.example.japanese.dto.request.ExamRequest;
+import com.example.japanese.dto.request.StudySessionRequest;
 import com.example.japanese.dto.request.SubmitExamRequest;
 import com.example.japanese.dto.response.AdminExamResponse;
 import com.example.japanese.dto.response.ExamAttemptResponse;
@@ -19,6 +20,8 @@ import com.example.japanese.entity.ExamQuestion;
 import com.example.japanese.entity.Exercise;
 import com.example.japanese.entity.ExerciseAnswer;
 import com.example.japanese.entity.Level;
+import com.example.japanese.entity.NotificationType;
+import com.example.japanese.entity.StudyActivityType;
 import com.example.japanese.entity.User;
 import com.example.japanese.exception.ExamExpiredException;
 import com.example.japanese.exception.InvalidRequestException;
@@ -64,6 +67,8 @@ public class ExamService {
     private final LevelRepository levelRepository;
     private final UserRepository userRepository;
     private final ExamMapper examMapper;
+    private final StudySessionService studySessionService;
+    private final NotificationService notificationService;
 
     // ---- Admin CRUD ----
 
@@ -93,12 +98,17 @@ public class ExamService {
 
         exam.getQuestions().addAll(toQuestionEntities(request.getQuestions()));
 
-        return examMapper.toAdminResponse(examRepository.save(exam));
+        AdminExamResponse response = examMapper.toAdminResponse(examRepository.save(exam));
+        // A brand new exam has no previous status to compare against - treat
+        // it as "was not published" so creating one directly as PUBLISHED still notifies.
+        notifyIfNewlyPublished(null, exam);
+        return response;
     }
 
     @Transactional
     public AdminExamResponse update(Long id, ExamRequest request) {
         Exam exam = getOrThrow(id);
+        ContentStatus previousStatus = exam.getStatus();
 
         exam.setLevel(getLevelOrThrow(request.getLevelId()));
         exam.setTitle(request.getTitle());
@@ -112,7 +122,25 @@ public class ExamService {
         exam.getQuestions().clear();
         exam.getQuestions().addAll(toQuestionEntities(request.getQuestions()));
 
-        return examMapper.toAdminResponse(examRepository.save(exam));
+        AdminExamResponse response = examMapper.toAdminResponse(examRepository.save(exam));
+        notifyIfNewlyPublished(previousStatus, exam);
+        return response;
+    }
+
+    /**
+     * Requirements section 24 - fires only on the DRAFT (or nonexistent) ->
+     * PUBLISHED transition, never on every save of already-published content.
+     */
+    private void notifyIfNewlyPublished(ContentStatus previousStatus, Exam exam) {
+        boolean wasPublished = previousStatus == ContentStatus.PUBLISHED;
+        boolean isPublished = exam.getStatus() == ContentStatus.PUBLISHED;
+        if (!wasPublished && isPublished) {
+            notificationService.notifyAllUsers(
+                    NotificationType.NEW_EXAM,
+                    "New exam published",
+                    exam.getTitle() + " is now available"
+            );
+        }
     }
 
     @Transactional
@@ -223,6 +251,14 @@ public class ExamService {
         attempt.setCorrectCount(correctCount);
         attempt.setWrongCount(wrongCount);
         examAttemptRepository.save(attempt);
+
+        // Requirements section 21/22 - feeds the streak calculation, using the attempt's real times.
+        StudySessionRequest session = new StudySessionRequest();
+        session.setActivityType(StudyActivityType.EXAM);
+        session.setReferenceId(examId);
+        session.setStartedAt(attempt.getStartedAt());
+        session.setEndedAt(attempt.getSubmittedAt());
+        studySessionService.record(userId, session);
 
         return toResultResponse(attempt, exam);
     }

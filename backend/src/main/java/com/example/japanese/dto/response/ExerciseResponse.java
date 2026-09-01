@@ -19,6 +19,8 @@ public class ExerciseResponse {
     private Long id;
     private Long lessonId;
     private String lessonTitle;
+    private Long readingId;
+    private String readingTitle;
     private Long levelId;
     private String levelCode;
     private ExerciseType type;

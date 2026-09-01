@@ -6,6 +6,7 @@ import com.example.japanese.dto.response.PageResponse;
 import com.example.japanese.entity.ContentStatus;
 import com.example.japanese.entity.Level;
 import com.example.japanese.entity.Lesson;
+import com.example.japanese.entity.NotificationType;
 import com.example.japanese.exception.ResourceNotFoundException;
 import com.example.japanese.mapper.LessonMapper;
 import com.example.japanese.repository.LevelRepository;
@@ -23,6 +24,7 @@ public class LessonService {
     private final LessonRepository lessonRepository;
     private final LevelRepository levelRepository;
     private final LessonMapper lessonMapper;
+    private final NotificationService notificationService;
 
     /** Admin can see lessons in any status (BR-007). */
     @Transactional(readOnly = true)
@@ -65,13 +67,18 @@ public class LessonService {
                 .status(request.getStatus())
                 .build();
 
-        return lessonMapper.toResponse(lessonRepository.save(lesson));
+        LessonResponse response = lessonMapper.toResponse(lessonRepository.save(lesson));
+        // A brand new lesson has no previous status to compare against - treat
+        // it as "was not published" so creating one directly as PUBLISHED still notifies.
+        notifyIfNewlyPublished(null, lesson);
+        return response;
     }
 
     @Transactional
     public LessonResponse update(Long id, LessonRequest request) {
         Lesson lesson = getOrThrow(id);
         Level level = getLevelOrThrow(request.getLevelId());
+        ContentStatus previousStatus = lesson.getStatus();
 
         lesson.setLevel(level);
         lesson.setTitle(request.getTitle());
@@ -80,7 +87,25 @@ public class LessonService {
         lesson.setOrderIndex(request.getOrderIndex());
         lesson.setStatus(request.getStatus());
 
-        return lessonMapper.toResponse(lessonRepository.save(lesson));
+        LessonResponse response = lessonMapper.toResponse(lessonRepository.save(lesson));
+        notifyIfNewlyPublished(previousStatus, lesson);
+        return response;
+    }
+
+    /**
+     * Requirements section 24 - fires only on the DRAFT (or nonexistent) ->
+     * PUBLISHED transition, never on every save of already-published content.
+     */
+    private void notifyIfNewlyPublished(ContentStatus previousStatus, Lesson lesson) {
+        boolean wasPublished = previousStatus == ContentStatus.PUBLISHED;
+        boolean isPublished = lesson.getStatus() == ContentStatus.PUBLISHED;
+        if (!wasPublished && isPublished) {
+            notificationService.notifyAllUsers(
+                    NotificationType.NEW_LESSON,
+                    "New lesson published",
+                    lesson.getTitle() + " is now available"
+            );
+        }
     }
 
     @Transactional

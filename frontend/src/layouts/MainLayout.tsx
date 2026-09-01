@@ -17,6 +17,7 @@ import {
 } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { NotificationBell } from '../components/NotificationBell';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -98,29 +99,32 @@ export function MainLayout({ children }: { children: ReactNode }) {
           >
             {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
           </span>
-          <Dropdown
-            menu={{
-              items: [
-                {
-                  key: 'profile',
-                  icon: <UserOutlined />,
-                  label: <Link to="/profile">Profile</Link>,
-                },
-                { type: 'divider' },
-                {
-                  key: 'logout',
-                  icon: <LogoutOutlined />,
-                  label: 'Logout',
-                  onClick: handleLogout,
-                },
-              ],
-            }}
-          >
-            <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Avatar icon={<UserOutlined />} />
-              <Text>{user?.fullName ?? user?.username}</Text>
-            </span>
-          </Dropdown>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <NotificationBell />
+            <Dropdown
+              menu={{
+                items: [
+                  {
+                    key: 'profile',
+                    icon: <UserOutlined />,
+                    label: <Link to="/profile">Profile</Link>,
+                  },
+                  { type: 'divider' },
+                  {
+                    key: 'logout',
+                    icon: <LogoutOutlined />,
+                    label: 'Logout',
+                    onClick: handleLogout,
+                  },
+                ],
+              }}
+            >
+              <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Avatar icon={<UserOutlined />} />
+                <Text>{user?.fullName ?? user?.username}</Text>
+              </span>
+            </Dropdown>
+          </div>
         </Header>
         <Content style={{ margin: 16 }}>
           <div style={{ background: '#fff', padding: 24, borderRadius: 8, minHeight: '80vh' }}>

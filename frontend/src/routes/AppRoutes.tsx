@@ -33,6 +33,11 @@ import ExamAttemptPage from '../pages/exams/ExamAttemptPage';
 import ExamResultPage from '../pages/exams/ExamResultPage';
 import ExamHistoryPage from '../pages/exams/ExamHistoryPage';
 import ExamManagementPage from '../pages/admin/ExamManagementPage';
+import ListeningListPage from '../pages/listening/ListeningListPage';
+import ReadingListPage from '../pages/reading/ReadingListPage';
+import ReadingDetailPage from '../pages/reading/ReadingDetailPage';
+import ReadingManagementPage from '../pages/admin/ReadingManagementPage';
+import ProgressPage from '../pages/ProgressPage';
 
 /** Wraps a page with the authenticated-user shell (route guard + sidebar layout). */
 function userPage(node: ReactNode) {
@@ -70,15 +75,16 @@ export function AppRoutes() {
       <Route path="/kanji/:id" element={userPage(<KanjiFlashcardPage />)} />
       <Route path="/grammar" element={userPage(<GrammarListPage />)} />
       <Route path="/grammar/:id" element={userPage(<GrammarFlashcardPage />)} />
-      <Route path="/listening" element={userPage(<ComingSoonPage title="Listening" />)} />
-      <Route path="/reading" element={userPage(<ComingSoonPage title="Reading" />)} />
+      <Route path="/listening" element={userPage(<ListeningListPage />)} />
+      <Route path="/reading" element={userPage(<ReadingListPage />)} />
+      <Route path="/reading/:id" element={userPage(<ReadingDetailPage />)} />
       <Route path="/exercises" element={userPage(<ExerciseListPage />)} />
       <Route path="/exercises/:id" element={userPage(<ExerciseAttemptPage />)} />
       <Route path="/exams" element={userPage(<ExamListPage />)} />
       <Route path="/exams/history" element={userPage(<ExamHistoryPage />)} />
       <Route path="/exams/:id" element={userPage(<ExamAttemptPage />)} />
       <Route path="/exams/:id/result" element={userPage(<ExamResultPage />)} />
-      <Route path="/progress" element={userPage(<ComingSoonPage title="Progress" />)} />
+      <Route path="/progress" element={userPage(<ProgressPage />)} />
       <Route path="/bookmarks" element={userPage(<BookmarksPage />)} />
       <Route path="/profile" element={userPage(<ProfilePage />)} />
 
@@ -92,6 +98,7 @@ export function AppRoutes() {
       <Route path="/admin/grammar" element={adminPage(<GrammarManagementPage />)} />
       <Route path="/admin/exercises" element={adminPage(<ExerciseManagementPage />)} />
       <Route path="/admin/exams" element={adminPage(<ExamManagementPage />)} />
+      <Route path="/admin/readings" element={adminPage(<ReadingManagementPage />)} />
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

@@ -17,6 +17,9 @@ public class ExerciseRequest {
 
     private Long lessonId;
 
+    /** Requirements section 16 - optional comprehension question attached to a reading passage. */
+    private Long readingId;
+
     @NotNull(message = "levelId is required")
     private Long levelId;
 

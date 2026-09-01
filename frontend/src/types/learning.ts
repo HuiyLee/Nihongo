@@ -60,3 +60,10 @@ export interface StudySessionResponse {
   endedAt: string;
   durationSeconds: number;
 }
+
+/** Requirements section 22. Computed on the fly from StudySession rows - never cached. */
+export interface Streak {
+  currentStreak: number;
+  longestStreak: number;
+  lastActiveDate?: string;
+}

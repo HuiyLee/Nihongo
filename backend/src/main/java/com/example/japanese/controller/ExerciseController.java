@@ -6,10 +6,12 @@ import com.example.japanese.dto.response.ExerciseResponse;
 import com.example.japanese.dto.response.PageResponse;
 import com.example.japanese.dto.response.SubmitExerciseResponse;
 import com.example.japanese.entity.ExerciseType;
+import com.example.japanese.security.UserPrincipal;
 import com.example.japanese.service.ExerciseService;
 import com.example.japanese.util.PageableFactory;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,13 +36,14 @@ public class ExerciseController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long levelId,
             @RequestParam(required = false) Long lessonId,
+            @RequestParam(required = false) Long readingId,
             @RequestParam(required = false) ExerciseType type,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
             @RequestParam(required = false) String sort
     ) {
         return ApiResponse.success(
-                exerciseService.search(keyword, levelId, lessonId, type, PageableFactory.build(page, size, sort))
+                exerciseService.search(keyword, levelId, lessonId, readingId, type, PageableFactory.build(page, size, sort))
         );
     }
 
@@ -51,8 +54,10 @@ public class ExerciseController {
 
     @PostMapping("/{id}/submit")
     public ApiResponse<SubmitExerciseResponse> submit(
-            @PathVariable Long id, @Valid @RequestBody SubmitExerciseRequest request
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long id,
+            @Valid @RequestBody SubmitExerciseRequest request
     ) {
-        return ApiResponse.success("Exercise submitted", exerciseService.submit(id, request));
+        return ApiResponse.success("Exercise submitted", exerciseService.submit(principal.getId(), id, request));
     }
 }

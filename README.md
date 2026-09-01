@@ -5,11 +5,12 @@ Built per `docs/Japanese_Learning_Requirements.md`, following the incremental
 development order the spec itself recommends (section 44).
 
 **Current state: Phase 1 (Foundation) + Phase 2 (Content management) +
-Phase 3 (User learning) + Phase 4 (Exercises) + Phase 5 (JLPT exams) done.**
+Phase 3 (User learning) + Phase 4 (Exercises) + Phase 5 (JLPT exams) +
+Phase 6 (Advanced learning) done.**
 Everything below is implemented and working; the remaining features
-(listening/reading, streak, spaced repetition, notifications, AI features)
-are intentionally left for later phases and appear in the UI as a "coming
-soon" placeholder so the full route map from the spec is already wired up.
+(optional AI features) are intentionally left for a later phase and appear
+in the UI as a "coming soon" placeholder so the full route map from the
+spec is already wired up.
 
 ## What's implemented
 
@@ -210,6 +211,66 @@ soon" placeholder so the full route map from the spec is already wired up.
   concluded attempts (verified against a second, freshly-registered user
   with none).
 
+### Phase 6 - Advanced learning (reading, listening, spaced repetition, streak, notifications, progress)
+
+- **Reading** (section 16): a new `Reading` entity (level, title, HTML
+  `content`, optional `translation`, difficulty) with public browse/detail
+  (`/api/readings`) and admin CRUD (`/api/admin/readings`). Unlike Lesson/
+  Exam there's no draft/published split - every reading is visible as soon
+  as it's created, matching the spec's scope for this content type.
+  Furigana is authored directly in the HTML as `<ruby>漢字<rt>かんじ</rt></ruby>`
+  and toggled client-side with a CSS class, so the backend never parses
+  furigana at all. The `translation` field is only ever included in the
+  response once the caller has completed the passage (or is an admin) -
+  completion is tracked by checking for a matching study session, not a
+  separate "completed" column. `POST /api/readings/{id}/complete` is
+  idempotent and records a study session (see below). Exercises can
+  optionally link to a Reading (`readingId`) so admins can attach
+  comprehension questions to a passage; the Reading detail page lists and
+  links to them.
+- **Listening** (section 15): no new backend entity - fully reuses the
+  existing `Exercise`/`ExerciseType.LISTENING`/`audioUrl`. A new shared
+  `AudioPlayer` component (play/pause/replay/five fixed speeds: 0.5x-1.5x)
+  is used both on the exercise attempt page and inline per-question on the
+  exam attempt page wherever a question carries audio. `/listening` is the
+  same `LearningBrowsePage` grid the other content types use, pre-filtered
+  to `type: LISTENING`, reusing the existing exercise attempt flow rather
+  than a separate one.
+- **Spaced repetition** (section 11): a real `SpacedRepetitionService`
+  replaces the placeholder bookkeeping from Phase 3. Marking an item KNOWN
+  doubles the previous review interval (starting at 1 day, capped at 90);
+  marking it UNKNOWN halves the interval (floored at 1 day) and resets the
+  item to `LEARNING`. The previous interval is derived from the gap between
+  the item's existing `lastReviewedAt`/`nextReviewAt` timestamps, so no
+  schema change was needed.
+- **Study activity tracking**: every learning action (marking vocabulary/
+  kanji/grammar, submitting a listening exercise, completing a reading,
+  finishing an exam) now records a row via the study-session API that
+  already existed from Phase 3 but had no callers until this phase. This
+  single source of truth feeds both the streak and the progress dashboard.
+- **Streak** (section 22, `GET /api/streak`): current and longest daily
+  study streak, computed on the fly from study-session timestamps (never
+  cached, and bucketed to calendar days in plain Java rather than
+  DB-specific date functions, so it behaves the same on H2 in tests and
+  Postgres in production).
+- **Notifications** (section 24): a new `Notification` entity/CRUD
+  (`/api/notifications`, unread count, mark-read, mark-all-read) plus a
+  `NotificationBell` in the header that polls every 60s. Publishing a
+  lesson or exam for the first time (draft/none -> published) fans a
+  notification out to every user automatically.
+- **Progress dashboard** (section 20, `GET /api/progress/*`) and **admin
+  stats** (section 35, `GET /api/admin/stats`): real, always-recomputed
+  percentages per category (vocabulary/kanji/grammar/lessons/exams) replace
+  the placeholder 0% cards on both the learner dashboard and the admin
+  overview page, plus the learner's current streak and admin-facing
+  platform totals and exam pass rate.
+- Integration tests covering: reading translation visibility before/after
+  completion (and that completing twice doesn't double-record), spaced
+  repetition interval progression across consecutive KNOWN/UNKNOWN marks,
+  streak counting across consecutive and non-consecutive days, a
+  publish-triggered notification actually reaching a user's notification
+  list, and the progress endpoints reflecting real marked/completed state.
+
 ## Project layout
 
 ```
@@ -286,6 +347,4 @@ WHERE username = 'your_username';
 ## Next phases
 
 See `docs/Japanese_Learning_Requirements.md` sections 38 and 44 for the full
-roadmap: Phase 6
-(listening/reading/streak/spaced repetition/notifications), Phase 7
-(optional AI features).
+roadmap: Phase 7 (optional AI features) is all that remains.
