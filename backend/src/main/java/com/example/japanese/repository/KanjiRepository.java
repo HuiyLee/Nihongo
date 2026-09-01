@@ -12,10 +12,10 @@ public interface KanjiRepository extends JpaRepository<Kanji, Long> {
     @Query("""
             select k from Kanji k
             where (:keyword is null
-                or lower(k.character) like lower(concat('%', :keyword, '%'))
-                or lower(k.meaning) like lower(concat('%', :keyword, '%'))
-                or lower(k.onyomi) like lower(concat('%', :keyword, '%'))
-                or lower(k.kunyomi) like lower(concat('%', :keyword, '%')))
+                or lower(k.character) like lower(concat('%', cast(:keyword as string), '%'))
+                or lower(k.meaning) like lower(concat('%', cast(:keyword as string), '%'))
+                or lower(k.onyomi) like lower(concat('%', cast(:keyword as string), '%'))
+                or lower(k.kunyomi) like lower(concat('%', cast(:keyword as string), '%')))
               and (:levelId is null or k.level.id = :levelId)
               and (:lessonId is null or k.lesson.id = :lessonId)
             """)

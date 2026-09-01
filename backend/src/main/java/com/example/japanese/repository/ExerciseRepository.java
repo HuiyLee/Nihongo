@@ -12,7 +12,7 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
 
     @Query("""
             select e from Exercise e
-            where (:keyword is null or lower(e.question) like lower(concat('%', :keyword, '%')))
+            where (:keyword is null or lower(e.question) like lower(concat('%', cast(:keyword as string), '%')))
               and (:levelId is null or e.level.id = :levelId)
               and (:lessonId is null or e.lesson.id = :lessonId)
               and (:readingId is null or e.reading.id = :readingId)

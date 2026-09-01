@@ -12,7 +12,7 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
 
     @Query("""
             select l from Lesson l
-            where (:keyword is null or lower(l.title) like lower(concat('%', :keyword, '%')))
+            where (:keyword is null or lower(l.title) like lower(concat('%', cast(:keyword as string), '%')))
               and (:levelId is null or l.level.id = :levelId)
               and (:status is null or l.status = :status)
             """)

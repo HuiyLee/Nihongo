@@ -12,7 +12,7 @@ public interface ReadingRepository extends JpaRepository<Reading, Long> {
     @Query("""
             select r from Reading r
             where (:keyword is null
-                or lower(r.title) like lower(concat('%', :keyword, '%')))
+                or lower(r.title) like lower(concat('%', cast(:keyword as string), '%')))
               and (:levelId is null or r.level.id = :levelId)
             """)
     Page<Reading> search(

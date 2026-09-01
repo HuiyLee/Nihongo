@@ -15,7 +15,7 @@ public interface ExamRepository extends JpaRepository<Exam, Long> {
 
     @Query("""
             select e from Exam e
-            where (:keyword is null or lower(e.title) like lower(concat('%', :keyword, '%')))
+            where (:keyword is null or lower(e.title) like lower(concat('%', cast(:keyword as string), '%')))
               and (:levelId is null or e.level.id = :levelId)
               and (:status is null or e.status = :status)
             """)
