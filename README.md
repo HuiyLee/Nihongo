@@ -281,17 +281,22 @@ spec's own "do not implement everything at once" rule.
   lowest scope; weakness analysis / a personalized learning path is left
   for later, per the same "don't build everything at once" rule that
   shaped every earlier phase.
-- All three are backed by a single `AnthropicClient` (Anthropic's Messages
-  API), the one place in the codebase that knows the wire format so every
-  AI feature shares one call/error-handling path instead of duplicating
-  HTTP logic. It's configured via `ANTHROPIC_API_KEY` (blank by default) -
-  **the app starts and every other feature works normally with no key
-  set**; only the three `/api/ai/*` endpoints fail, with a clear 503
-  ("AI features are not configured on this server"), never a startup
-  crash or a leaked stack trace. `ANTHROPIC_MODEL` (default
-  `claude-sonnet-4-5`) and `ANTHROPIC_MAX_TOKENS` (default `1024`) are
-  also overridable - check Anthropic's current model list if the default
-  alias ever changes.
+- All three are backed by a single `GeminiClient` (Google's Gemini API,
+  `generateContent`), the one place in the codebase that knows the wire
+  format so every AI feature shares one call/error-handling path instead of
+  duplicating HTTP logic. Gemini was chosen specifically because Google AI
+  Studio's free tier doesn't require a credit card to get a key - keeps this
+  optional phase actually free to run, not just optional to build. It's
+  configured via `GEMINI_API_KEY` (blank by default) - **the app starts and
+  every other feature works normally with no key set**; only the three
+  `/api/ai/*` endpoints fail, with a clear 503 ("AI features are not
+  configured on this server"), never a startup crash or a leaked stack
+  trace. `GEMINI_MODEL` (default `gemini-2.5-flash`) and
+  `GEMINI_MAX_TOKENS` (default `1024`) are also overridable - check
+  Google's current model list at https://ai.google.dev/gemini-api/docs/models
+  if the default ever changes. Get a free key at
+  https://aistudio.google.com/apikey (verify current free-tier terms there
+  too, since they can change).
 - `POST /api/ai/grammar-explanation`: takes an optional `grammarId` (grounds
   the explanation in an existing Grammar entity's pattern/meaning/formation,
   echoed back in the response) and/or a free-text `question` - at least one
@@ -306,13 +311,15 @@ spec's own "do not implement everything at once" rule.
   migration. The frontend holds the running chat in React state only and
   resends the full message history every turn; the backend just adds a
   level-appropriate system prompt (JLPT `level`, default N5) and forwards
-  it to Claude.
-- Integration tests mock `AnthropicClient` (via `@MockBean`) so the
+  it to Gemini (translating the app's "user"/"assistant" role naming to
+  Gemini's "user"/"model" convention inside `GeminiClient` only, so
+  `AiService` and the request DTOs stay provider-agnostic).
+- Integration tests mock `GeminiClient` (via `@MockBean`) so the
   controller/validation/auth layer is tested without hitting the real API
   or requiring a key; a separate unit test exercises the real "no API key
   configured" 503 path; and a further unit test suite covers `AiService`'s
   own logic (grammar lookup, required-field validation, the
-  corrected/feedback marker parsing) with `AnthropicClient` mocked out.
+  corrected/feedback marker parsing) with `GeminiClient` mocked out.
 
 ## Project layout
 
@@ -348,16 +355,17 @@ N5-N1).
 Environment variables (all optional, see `application.yml` for defaults):
 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`,
 `JWT_ACCESS_EXPIRATION_MS`, `JWT_REFRESH_EXPIRATION_MS`,
-`CORS_ALLOWED_ORIGINS`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`,
-`ANTHROPIC_MAX_TOKENS`.
+`CORS_ALLOWED_ORIGINS`, `GEMINI_API_KEY`, `GEMINI_MODEL`,
+`GEMINI_MAX_TOKENS`.
 
 > **Important:** the default `JWT_SECRET` in `application.yml` is a
 > dev-only placeholder. Set a real, private, Base64-encoded 256-bit+ secret
 > via the `JWT_SECRET` env var before deploying anywhere real.
 
-> **Optional:** the Phase 7 AI endpoints (`/api/ai/*`) need `ANTHROPIC_API_KEY`
-> set to an Anthropic API key to actually work. Everything else in the app
-> runs fully without it.
+> **Optional:** the Phase 7 AI endpoints (`/api/ai/*`) need `GEMINI_API_KEY`
+> set to a Gemini API key to actually work - get a free one (no credit card)
+> at https://aistudio.google.com/apikey. Everything else in the app runs
+> fully without it.
 
 Run the test suite:
 

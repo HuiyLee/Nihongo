@@ -11,7 +11,7 @@ import com.example.japanese.entity.Grammar;
 import com.example.japanese.exception.InvalidRequestException;
 import com.example.japanese.exception.ResourceNotFoundException;
 import com.example.japanese.repository.GrammarRepository;
-import com.example.japanese.service.ai.AnthropicClient;
+import com.example.japanese.service.ai.GeminiClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,14 +31,14 @@ import static org.mockito.Mockito.when;
 
 /**
  * Requirements section 38, Phase 7 - AiService business logic, independent
- * of the HTTP layer: AnthropicClient is mocked out entirely, so these tests
+ * of the HTTP layer: GeminiClient is mocked out entirely, so these tests
  * never make a real network call.
  */
 @ExtendWith(MockitoExtension.class)
 class AiServiceTest {
 
     @Mock
-    private AnthropicClient anthropicClient;
+    private GeminiClient geminiClient;
     @Mock
     private GrammarRepository grammarRepository;
 
@@ -46,7 +46,7 @@ class AiServiceTest {
 
     @BeforeEach
     void setUp() {
-        aiService = new AiService(anthropicClient, grammarRepository);
+        aiService = new AiService(geminiClient, grammarRepository);
     }
 
     @Test
@@ -73,20 +73,20 @@ class AiServiceTest {
         GrammarExplanationRequest request = new GrammarExplanationRequest();
         request.setGrammarId(1L);
         when(grammarRepository.findById(1L)).thenReturn(Optional.of(grammar));
-        when(anthropicClient.complete(anyString(), anyList())).thenReturn("Here is the explanation.");
+        when(geminiClient.complete(anyString(), anyList())).thenReturn("Here is the explanation.");
 
         GrammarExplanationResponse response = aiService.explainGrammar(request);
 
         assertThat(response.getPattern()).isEqualTo("〜ばかりだ");
         assertThat(response.getExplanation()).isEqualTo("Here is the explanation.");
-        verify(anthropicClient).complete(anyString(), anyList());
+        verify(geminiClient).complete(anyString(), anyList());
     }
 
     @Test
     void explainGrammar_withOnlyQuestion_doesNotTouchRepository() {
         GrammarExplanationRequest request = new GrammarExplanationRequest();
         request.setQuestion("What does 〜てしまう mean?");
-        when(anthropicClient.complete(anyString(), anyList())).thenReturn("It means ~.");
+        when(geminiClient.complete(anyString(), anyList())).thenReturn("It means ~.");
 
         GrammarExplanationResponse response = aiService.explainGrammar(request);
 
@@ -98,7 +98,7 @@ class AiServiceTest {
     void correctWriting_parsesCorrectedAndFeedbackMarkers() {
         WritingCorrectionRequest request = new WritingCorrectionRequest();
         request.setText("わたし　がくせいです");
-        when(anthropicClient.complete(anyString(), anyList())).thenReturn(
+        when(geminiClient.complete(anyString(), anyList())).thenReturn(
                 "###CORRECTED###\n私は学生です。\n###FEEDBACK###\nBạn thiếu trợ từ 「は」sau chủ ngữ."
         );
 
@@ -113,7 +113,7 @@ class AiServiceTest {
     void correctWriting_whenModelIgnoresFormat_fallsBackToRawTextAsFeedback() {
         WritingCorrectionRequest request = new WritingCorrectionRequest();
         request.setText("こんにちは");
-        when(anthropicClient.complete(anyString(), anyList())).thenReturn("Looks fine to me!");
+        when(geminiClient.complete(anyString(), anyList())).thenReturn("Looks fine to me!");
 
         WritingCorrectionResponse response = aiService.correctWriting(request);
 
@@ -129,11 +129,11 @@ class AiServiceTest {
         message.setRole("user");
         message.setContent("こんにちは！");
         request.setMessages(List.of(message));
-        when(anthropicClient.complete(anyString(), anyList())).thenReturn("こんにちは!元気ですか?");
+        when(geminiClient.complete(anyString(), anyList())).thenReturn("こんにちは!元気ですか?");
 
         ConversationResponse response = aiService.converse(request);
 
         assertThat(response.getReply()).isEqualTo("こんにちは!元気ですか?");
-        verify(anthropicClient).complete(any(), anyList());
+        verify(geminiClient).complete(any(), anyList());
     }
 }

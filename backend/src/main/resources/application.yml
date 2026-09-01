@@ -44,11 +44,14 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   ai:
     # Phase 7 (optional) - blank by default so the app starts and every other
-    # feature keeps working without it. Set ANTHROPIC_API_KEY to enable the
-    # AI grammar explanation / writing correction / conversation endpoints.
-    api-key: ${ANTHROPIC_API_KEY:}
-    model: ${ANTHROPIC_MODEL:claude-sonnet-4-5}
-    max-tokens: ${ANTHROPIC_MAX_TOKENS:1024}
+    # feature keeps working without it. Backed by Google's Gemini API (free
+    # tier on Google AI Studio, no credit card needed to get a key - verify
+    # current terms at https://aistudio.google.com/apikey). Set GEMINI_API_KEY
+    # to enable the AI grammar explanation / writing correction / conversation
+    # endpoints.
+    api-key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_MODEL:gemini-2.5-flash}
+    max-tokens: ${GEMINI_MAX_TOKENS:1024}
 
 logging:
   level:

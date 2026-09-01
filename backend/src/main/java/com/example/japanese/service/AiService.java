@@ -10,7 +10,7 @@ import com.example.japanese.entity.Grammar;
 import com.example.japanese.exception.InvalidRequestException;
 import com.example.japanese.exception.ResourceNotFoundException;
 import com.example.japanese.repository.GrammarRepository;
-import com.example.japanese.service.ai.AnthropicClient;
+import com.example.japanese.service.ai.GeminiClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -21,10 +21,11 @@ import java.util.stream.Collectors;
 /**
  * Requirements section 38, Phase 7 (optional AI features) - grammar
  * explanation, writing correction, and conversation practice, all backed by
- * AnthropicClient. Deliberately scoped to the three features actually
- * requested for this pass; weakness analysis / personalized learning path is
- * left for a later iteration, matching the requirements doc's own "do not
- * implement every feature at once" rule (section 44).
+ * GeminiClient (Google's free-tier Gemini API). Deliberately scoped to the
+ * three features actually requested for this pass; weakness analysis /
+ * personalized learning path is left for a later iteration, matching the
+ * requirements doc's own "do not implement every feature at once" rule
+ * (section 44).
  */
 @Service
 @RequiredArgsConstructor
@@ -33,7 +34,7 @@ public class AiService {
     private static final String CORRECTED_MARKER = "###CORRECTED###";
     private static final String FEEDBACK_MARKER = "###FEEDBACK###";
 
-    private final AnthropicClient anthropicClient;
+    private final GeminiClient geminiClient;
     private final GrammarRepository grammarRepository;
 
     public GrammarExplanationResponse explainGrammar(GrammarExplanationRequest request) {
@@ -64,8 +65,8 @@ public class AiService {
             prompt.append("Learner's question: ").append(request.getQuestion());
         }
 
-        String explanation = anthropicClient.complete(system,
-                List.of(new AnthropicClient.Message("user", prompt.toString())));
+        String explanation = geminiClient.complete(system,
+                List.of(new GeminiClient.Message("user", prompt.toString())));
 
         return new GrammarExplanationResponse(grammar != null ? grammar.getPattern() : null, explanation);
     }
@@ -77,8 +78,8 @@ public class AiService {
                 + FEEDBACK_MARKER + "\n<feedback in Vietnamese explaining the mistakes and why, "
                 + "or a short compliment if the original was already correct>";
 
-        String raw = anthropicClient.complete(system,
-                List.of(new AnthropicClient.Message("user", request.getText())));
+        String raw = geminiClient.complete(system,
+                List.of(new GeminiClient.Message("user", request.getText())));
 
         return parseCorrection(request.getText(), raw);
     }
@@ -103,11 +104,11 @@ public class AiService {
                 + "level, keep replies short (2-4 sentences), and if the learner made a Japanese mistake "
                 + "in their last message, gently note the correction in Vietnamese at the end of your reply.";
 
-        List<AnthropicClient.Message> messages = request.getMessages().stream()
-                .map(m -> new AnthropicClient.Message(m.getRole(), m.getContent()))
+        List<GeminiClient.Message> messages = request.getMessages().stream()
+                .map(m -> new GeminiClient.Message(m.getRole(), m.getContent()))
                 .collect(Collectors.toList());
 
-        String reply = anthropicClient.complete(system, messages);
+        String reply = geminiClient.complete(system, messages);
         return new ConversationResponse(reply);
     }
 }

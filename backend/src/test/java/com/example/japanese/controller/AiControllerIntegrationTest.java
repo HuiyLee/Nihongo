@@ -4,7 +4,7 @@ import com.example.japanese.entity.Role;
 import com.example.japanese.entity.User;
 import com.example.japanese.repository.RoleRepository;
 import com.example.japanese.repository.UserRepository;
-import com.example.japanese.service.ai.AnthropicClient;
+import com.example.japanese.service.ai.GeminiClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,9 +26,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Requirements section 38, Phase 7. AnthropicClient is mocked so these tests
- * never hit the real Anthropic API (and pass with no ANTHROPIC_API_KEY
- * configured); AnthropicClientTest separately covers the real "not
+ * Requirements section 38, Phase 7. GeminiClient is mocked so these tests
+ * never hit the real Gemini API (and pass with no GEMINI_API_KEY
+ * configured); GeminiClientTest separately covers the real "not
  * configured" 503 path. Covers auth, request validation, and that AiService's
  * parsing/lookup logic is wired correctly end to end through the controller.
  */
@@ -46,7 +46,7 @@ class AiControllerIntegrationTest {
     @Autowired
     private UserRepository userRepository;
     @MockBean
-    private AnthropicClient anthropicClient;
+    private GeminiClient geminiClient;
 
     private final String testId = Long.toString(System.nanoTime() % 100_000);
 
@@ -147,7 +147,7 @@ class AiControllerIntegrationTest {
 
     @Test
     void writingCorrection_happyPath_parsesCorrectedAndFeedback() throws Exception {
-        when(anthropicClient.complete(anyString(), any())).thenReturn(
+        when(geminiClient.complete(anyString(), any())).thenReturn(
                 "###CORRECTED###\n私は学生です。\n###FEEDBACK###\nGood - just a missing particle."
         );
 
@@ -180,7 +180,7 @@ class AiControllerIntegrationTest {
 
     @Test
     void grammarExplanation_withKnownGrammarId_returnsExplanationAndPattern() throws Exception {
-        when(anthropicClient.complete(anyString(), any())).thenReturn("Detailed explanation here.");
+        when(geminiClient.complete(anyString(), any())).thenReturn("Detailed explanation here.");
 
         mockMvc.perform(post("/api/ai/grammar-explanation")
                         .header("Authorization", "Bearer " + userToken)
@@ -202,7 +202,7 @@ class AiControllerIntegrationTest {
 
     @Test
     void conversation_happyPath_returnsReply() throws Exception {
-        when(anthropicClient.complete(anyString(), any())).thenReturn("こんにちは!元気ですか?");
+        when(geminiClient.complete(anyString(), any())).thenReturn("こんにちは!元気ですか?");
 
         Map<String, Object> body = Map.of(
                 "level", "N5",

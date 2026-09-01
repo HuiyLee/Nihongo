@@ -1,7 +1,0 @@
-.git
-frontend
-docs
-*.zip
-backend/target
-**/node_modules
-**/dist
