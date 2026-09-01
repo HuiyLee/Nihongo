@@ -6,11 +6,13 @@ development order the spec itself recommends (section 44).
 
 **Current state: Phase 1 (Foundation) + Phase 2 (Content management) +
 Phase 3 (User learning) + Phase 4 (Exercises) + Phase 5 (JLPT exams) +
-Phase 6 (Advanced learning) done.**
-Everything below is implemented and working; the remaining features
-(optional AI features) are intentionally left for a later phase and appear
-in the UI as a "coming soon" placeholder so the full route map from the
-spec is already wired up.
+Phase 6 (Advanced learning) + Phase 7 (AI features, partial) done.**
+Every phase in the roadmap has at least an initial implementation. Phase 7
+is explicitly optional per the spec and scoped to three of its six listed
+AI features for this pass (grammar explanation, writing correction,
+conversation practice) - AI-driven weakness analysis / personalized
+learning path is intentionally left for a later iteration, matching the
+spec's own "do not implement everything at once" rule.
 
 ## What's implemented
 
@@ -271,6 +273,47 @@ spec is already wired up.
   publish-triggered notification actually reaching a user's notification
   list, and the progress endpoints reflecting real marked/completed state.
 
+### Phase 7 - AI features (optional, partial)
+
+- Scoped to three of the six AI features the spec lists - **AI grammar
+  explanation**, **AI writing correction**, and **AI conversation
+  practice** - chosen because they're the highest learner value at the
+  lowest scope; weakness analysis / a personalized learning path is left
+  for later, per the same "don't build everything at once" rule that
+  shaped every earlier phase.
+- All three are backed by a single `AnthropicClient` (Anthropic's Messages
+  API), the one place in the codebase that knows the wire format so every
+  AI feature shares one call/error-handling path instead of duplicating
+  HTTP logic. It's configured via `ANTHROPIC_API_KEY` (blank by default) -
+  **the app starts and every other feature works normally with no key
+  set**; only the three `/api/ai/*` endpoints fail, with a clear 503
+  ("AI features are not configured on this server"), never a startup
+  crash or a leaked stack trace. `ANTHROPIC_MODEL` (default
+  `claude-sonnet-4-5`) and `ANTHROPIC_MAX_TOKENS` (default `1024`) are
+  also overridable - check Anthropic's current model list if the default
+  alias ever changes.
+- `POST /api/ai/grammar-explanation`: takes an optional `grammarId` (grounds
+  the explanation in an existing Grammar entity's pattern/meaning/formation,
+  echoed back in the response) and/or a free-text `question` - at least one
+  is required. Reached standalone or via an "Explain with AI" button on the
+  Grammar flashcard page.
+- `POST /api/ai/writing-correction`: takes Japanese `text`, asks the model
+  for a corrected version plus feedback in a fixed two-section format, and
+  parses that into `{corrected, feedback}` - if the model ever ignores the
+  format, the raw reply is still surfaced as feedback rather than the
+  request failing outright.
+- `POST /api/ai/conversation`: deliberately stateless - no new entity or
+  migration. The frontend holds the running chat in React state only and
+  resends the full message history every turn; the backend just adds a
+  level-appropriate system prompt (JLPT `level`, default N5) and forwards
+  it to Claude.
+- Integration tests mock `AnthropicClient` (via `@MockBean`) so the
+  controller/validation/auth layer is tested without hitting the real API
+  or requiring a key; a separate unit test exercises the real "no API key
+  configured" 503 path; and a further unit test suite covers `AiService`'s
+  own logic (grammar lookup, required-field validation, the
+  corrected/feedback marker parsing) with `AnthropicClient` mocked out.
+
 ## Project layout
 
 ```
@@ -305,11 +348,16 @@ N5-N1).
 Environment variables (all optional, see `application.yml` for defaults):
 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`,
 `JWT_ACCESS_EXPIRATION_MS`, `JWT_REFRESH_EXPIRATION_MS`,
-`CORS_ALLOWED_ORIGINS`.
+`CORS_ALLOWED_ORIGINS`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`,
+`ANTHROPIC_MAX_TOKENS`.
 
 > **Important:** the default `JWT_SECRET` in `application.yml` is a
 > dev-only placeholder. Set a real, private, Base64-encoded 256-bit+ secret
 > via the `JWT_SECRET` env var before deploying anywhere real.
+
+> **Optional:** the Phase 7 AI endpoints (`/api/ai/*`) need `ANTHROPIC_API_KEY`
+> set to an Anthropic API key to actually work. Everything else in the app
+> runs fully without it.
 
 Run the test suite:
 
@@ -346,5 +394,8 @@ WHERE username = 'your_username';
 
 ## Next phases
 
-See `docs/Japanese_Learning_Requirements.md` sections 38 and 44 for the full
-roadmap: Phase 7 (optional AI features) is all that remains.
+Every phase in `docs/Japanese_Learning_Requirements.md` sections 38/44 has
+an initial implementation. What's left is optional depth within Phase 7:
+AI-driven weakness analysis / a personalized learning path (the two AI
+features not built in this pass), and AI speaking practice (needs a
+speech/audio pipeline beyond this phase's text-based scope).

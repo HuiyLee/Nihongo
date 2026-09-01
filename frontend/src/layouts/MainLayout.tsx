@@ -14,6 +14,7 @@ import {
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  RobotOutlined,
 } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -32,9 +33,25 @@ const NAV_ITEMS = [
   { key: '/reading', icon: <FileTextOutlined />, label: 'Reading' },
   { key: '/exercises', icon: <FormOutlined />, label: 'Exercises' },
   { key: '/exams', icon: <TrophyOutlined />, label: 'JLPT Exams' },
+  {
+    key: '/ai',
+    icon: <RobotOutlined />,
+    label: 'AI Practice',
+    children: [
+      { key: '/ai/grammar', label: 'Grammar explanation' },
+      { key: '/ai/writing-correction', label: 'Writing correction' },
+      { key: '/ai/conversation', label: 'Conversation' },
+    ],
+  },
   { key: '/progress', icon: <DashboardOutlined />, label: 'Progress' },
   { key: '/bookmarks', icon: <StarOutlined />, label: 'Bookmarks' },
 ];
+
+/** Flattened leaf route keys, used to compute which nav item (including AI Practice's
+ * submenu children) matches the current URL - Menu's own `items` stay nested for rendering. */
+const FLAT_NAV_KEYS = NAV_ITEMS.flatMap((item) =>
+  'children' in item && item.children ? item.children.map((child) => child.key) : [item.key]
+);
 
 export function MainLayout({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -44,7 +61,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
   const screens = Grid.useBreakpoint();
 
   const selectedKey =
-    NAV_ITEMS.find((item) => location.pathname.startsWith(item.key))?.key ?? '/dashboard';
+    FLAT_NAV_KEYS.find((key) => location.pathname.startsWith(key)) ?? '/dashboard';
 
   const handleLogout = async () => {
     await logout();
@@ -78,6 +95,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
           theme="dark"
           mode="inline"
           selectedKeys={[selectedKey]}
+          defaultOpenKeys={['/ai']}
           items={NAV_ITEMS}
           onClick={({ key }) => navigate(key)}
         />

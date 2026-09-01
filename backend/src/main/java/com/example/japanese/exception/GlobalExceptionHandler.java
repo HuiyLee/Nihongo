@@ -58,6 +58,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    @ExceptionHandler(AiServiceException.class)
+    public ResponseEntity<ApiResponse<Object>> handleAiServiceException(AiServiceException ex) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponse<Object>> handleBadCredentials(BadCredentialsException ex) {
         return build(HttpStatus.UNAUTHORIZED, "Invalid username or password");

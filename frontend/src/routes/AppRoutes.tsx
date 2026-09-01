@@ -38,6 +38,9 @@ import ReadingListPage from '../pages/reading/ReadingListPage';
 import ReadingDetailPage from '../pages/reading/ReadingDetailPage';
 import ReadingManagementPage from '../pages/admin/ReadingManagementPage';
 import ProgressPage from '../pages/ProgressPage';
+import AiGrammarExplainerPage from '../pages/ai/AiGrammarExplainerPage';
+import AiWritingCorrectionPage from '../pages/ai/AiWritingCorrectionPage';
+import AiConversationPage from '../pages/ai/AiConversationPage';
 
 /** Wraps a page with the authenticated-user shell (route guard + sidebar layout). */
 function userPage(node: ReactNode) {
@@ -85,6 +88,9 @@ export function AppRoutes() {
       <Route path="/exams/:id" element={userPage(<ExamAttemptPage />)} />
       <Route path="/exams/:id/result" element={userPage(<ExamResultPage />)} />
       <Route path="/progress" element={userPage(<ProgressPage />)} />
+      <Route path="/ai/grammar" element={userPage(<AiGrammarExplainerPage />)} />
+      <Route path="/ai/writing-correction" element={userPage(<AiWritingCorrectionPage />)} />
+      <Route path="/ai/conversation" element={userPage(<AiConversationPage />)} />
       <Route path="/bookmarks" element={userPage(<BookmarksPage />)} />
       <Route path="/profile" element={userPage(<ProfilePage />)} />
 
