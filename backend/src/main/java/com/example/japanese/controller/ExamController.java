@@ -17,6 +17,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -80,6 +81,32 @@ public class ExamController {
     @GetMapping("/{id}/result")
     public ApiResponse<ExamResultResponse> result(@AuthenticationPrincipal UserPrincipal principal, @PathVariable Long id) {
         return ApiResponse.success(examService.result(principal.getId(), id));
+    }
+
+    /** Requirements section 38 Phase 5 ("Auto save") - called periodically while an attempt is in progress. */
+    @PutMapping("/{id}/save")
+    public ApiResponse<Void> saveProgress(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long id,
+            @Valid @RequestBody SubmitExamRequest request
+    ) {
+        examService.saveProgress(principal.getId(), id, request);
+        return ApiResponse.success("Progress saved", null);
+    }
+
+    /**
+     * Requirements section 38 Phase 5 ("History"). A fixed literal path
+     * ("attempts/history"), not a variable one, so it can never collide
+     * with GET /{id} above regardless of routing order.
+     */
+    @GetMapping("/attempts/history")
+    public ApiResponse<PageResponse<ExamResultResponse>> history(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort
+    ) {
+        return ApiResponse.success(examService.history(principal.getId(), PageableFactory.build(page, size, sort)));
     }
 
     private boolean isAdmin(UserPrincipal principal) {

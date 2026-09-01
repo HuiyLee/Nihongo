@@ -31,6 +31,7 @@ import ExerciseManagementPage from '../pages/admin/ExerciseManagementPage';
 import ExamListPage from '../pages/exams/ExamListPage';
 import ExamAttemptPage from '../pages/exams/ExamAttemptPage';
 import ExamResultPage from '../pages/exams/ExamResultPage';
+import ExamHistoryPage from '../pages/exams/ExamHistoryPage';
 import ExamManagementPage from '../pages/admin/ExamManagementPage';
 
 /** Wraps a page with the authenticated-user shell (route guard + sidebar layout). */
@@ -74,6 +75,7 @@ export function AppRoutes() {
       <Route path="/exercises" element={userPage(<ExerciseListPage />)} />
       <Route path="/exercises/:id" element={userPage(<ExerciseAttemptPage />)} />
       <Route path="/exams" element={userPage(<ExamListPage />)} />
+      <Route path="/exams/history" element={userPage(<ExamHistoryPage />)} />
       <Route path="/exams/:id" element={userPage(<ExamAttemptPage />)} />
       <Route path="/exams/:id/result" element={userPage(<ExamResultPage />)} />
       <Route path="/progress" element={userPage(<ComingSoonPage title="Progress" />)} />

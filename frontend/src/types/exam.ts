@@ -62,7 +62,19 @@ export interface ExamQuestion {
   exercise: Exercise;
 }
 
-/** Requirements section 18. What POST /start returns - this is what delivers the question list to the client. */
+/** One question's previously auto-saved selection - see ExamAttempt.savedAnswers below. */
+export interface SavedAnswer {
+  examQuestionId: number;
+  answerIds: number[];
+}
+
+/**
+ * Requirements section 18. What POST /start returns - this is what delivers
+ * the question list to the client. savedAnswers carries whatever PUT
+ * /{id}/save last persisted (empty on a brand-new attempt), so resuming a
+ * live attempt after a refresh can restore prior selections instead of
+ * losing them (section 38 Phase 5: "Auto save").
+ */
 export interface ExamAttempt {
   attemptId: number;
   examId: number;
@@ -71,6 +83,7 @@ export interface ExamAttempt {
   startedAt: string;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'EXPIRED';
   questions: ExamQuestion[];
+  savedAnswers: SavedAnswer[];
 }
 
 export interface ExamAnswerSubmission {

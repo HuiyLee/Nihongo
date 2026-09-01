@@ -44,6 +44,7 @@ export default function ExamAttemptPage() {
   const [answers, setAnswers] = useState<Record<number, number[]>>({});
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const submittedRef = useRef(false);
 
   const loadExam = useCallback(async () => {
@@ -109,12 +110,46 @@ export default function ExamAttemptPage() {
     return () => window.clearInterval(interval);
   }, [attempt, handleSubmit]);
 
+  // Auto save (requirements section 38 Phase 5) - debounced so every click
+  // doesn't fire its own request, but a refresh mid-attempt loses at most a
+  // couple of seconds of progress rather than everything. The debounce
+  // timer's callback fires asynchronously, same reasoning as the countdown
+  // tick above.
+  useEffect(() => {
+    if (!attempt || submittedRef.current) {
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      examApi
+        .saveProgress(examId, {
+          answers: attempt.questions.map((q) => ({
+            examQuestionId: q.id,
+            answerIds: answers[q.id] ?? [],
+          })),
+        })
+        .then(() => setLastSavedAt(new Date()))
+        .catch(() => {
+          // Best-effort - the next debounced save (or the final submit) will
+          // retry; a transient failure here shouldn't interrupt the exam.
+        });
+    }, 1500);
+    return () => window.clearTimeout(timeout);
+  }, [answers, attempt, examId]);
+
   const handleStart = async () => {
     setStarting(true);
     try {
       const response = await examApi.start(examId);
-      setAttempt(response.data.data);
-      setAnswers({});
+      const data = response.data.data;
+      setAttempt(data);
+      const restored: Record<number, number[]> = {};
+      for (const saved of data.savedAnswers) {
+        restored[saved.examQuestionId] = saved.answerIds;
+      }
+      setAnswers(restored);
+      if (data.savedAnswers.length > 0) {
+        setLastSavedAt(new Date());
+      }
     } catch (err) {
       message.error(getErrorMessage(err, 'Failed to start exam'));
     } finally {
@@ -197,6 +232,11 @@ export default function ExamAttemptPage() {
           showInfo={false}
           status={percentLeft <= 10 ? 'exception' : 'active'}
         />
+        {lastSavedAt && (
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            Progress auto-saved at {lastSavedAt.toLocaleTimeString()}
+          </Text>
+        )}
       </Card>
 
       {attempt.questions.map((q, index) => {

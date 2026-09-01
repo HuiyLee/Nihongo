@@ -9,6 +9,7 @@ import com.example.japanese.dto.response.ExamAttemptResponse;
 import com.example.japanese.dto.response.ExamResponse;
 import com.example.japanese.dto.response.ExamResultResponse;
 import com.example.japanese.dto.response.PageResponse;
+import com.example.japanese.dto.response.SavedAnswerResponse;
 import com.example.japanese.entity.ContentStatus;
 import com.example.japanese.entity.Exam;
 import com.example.japanese.entity.ExamAnswer;
@@ -196,27 +197,10 @@ public class ExamService {
             throw new ExamExpiredException("This exam attempt has expired and cannot be submitted"); // BR-009
         }
 
-        Map<Long, ExamQuestion> questionsById = exam.getQuestions().stream()
-                .collect(Collectors.toMap(ExamQuestion::getId, q -> q));
+        Map<Long, Set<Long>> submittedByQuestion = validateSubmissions(exam, request.getAnswers());
+        persistAnswers(attempt, exam, submittedByQuestion);
 
-        Map<Long, Set<Long>> submittedByQuestion = new HashMap<>();
-        for (ExamAnswerSubmission submission : request.getAnswers()) {
-            ExamQuestion question = questionsById.get(submission.getExamQuestionId());
-            if (question == null) {
-                throw new InvalidRequestException("examQuestionId does not belong to this exam");
-            }
-            Set<Long> validAnswerIds = question.getExercise().getAnswers().stream()
-                    .map(ExerciseAnswer::getId)
-                    .collect(Collectors.toSet());
-            Set<Long> submittedIds = new HashSet<>(submission.getAnswerIds());
-            if (!validAnswerIds.containsAll(submittedIds)) {
-                throw new InvalidRequestException("One or more answerIds do not belong to this question");
-            }
-            submittedByQuestion.put(question.getId(), submittedIds);
-        }
-
-        examAnswerRepository.deleteByExamAttemptId(attempt.getId());
-
+        // Grading (BR-010) - always server-computed, never trusts a score from the request.
         int correctCount = 0;
         for (ExamQuestion question : exam.getQuestions()) {
             Set<Long> submittedIds = submittedByQuestion.getOrDefault(question.getId(), Set.of());
@@ -224,19 +208,8 @@ public class ExamService {
                     .filter(ExerciseAnswer::isCorrect)
                     .map(ExerciseAnswer::getId)
                     .collect(Collectors.toSet());
-
             if (submittedIds.equals(correctAnswerIds)) {
                 correctCount++;
-            }
-
-            for (ExerciseAnswer answer : question.getExercise().getAnswers()) {
-                if (submittedIds.contains(answer.getId())) {
-                    examAnswerRepository.save(ExamAnswer.builder()
-                            .examAttempt(attempt)
-                            .examQuestion(question)
-                            .selectedAnswer(answer)
-                            .build());
-                }
             }
         }
 
@@ -254,6 +227,28 @@ public class ExamService {
         return toResultResponse(attempt, exam);
     }
 
+    /**
+     * Requirements section 38 Phase 5 ("Auto save"). Persists selections for
+     * a still-IN_PROGRESS attempt without grading or changing its status -
+     * called periodically by the frontend so a refresh/crash mid-attempt
+     * doesn't lose answers. Subject to the same deadline as submit() (BR-009):
+     * once expired, neither saving nor submitting is allowed.
+     */
+    @Transactional
+    public void saveProgress(Long userId, Long examId, SubmitExamRequest request) {
+        Exam exam = getOrThrow(examId);
+        ExamAttempt attempt = examAttemptRepository.findByUserIdAndExamIdAndStatus(userId, examId, ExamAttemptStatus.IN_PROGRESS)
+                .orElseThrow(() -> new ResourceNotFoundException("No active attempt for this exam"));
+
+        if (isExpired(attempt, exam)) {
+            attempt.setStatus(ExamAttemptStatus.EXPIRED);
+            examAttemptRepository.save(attempt);
+            throw new ExamExpiredException("This exam attempt has expired and can no longer be saved");
+        }
+
+        persistAnswers(attempt, exam, validateSubmissions(exam, request.getAnswers()));
+    }
+
     @Transactional(readOnly = true)
     public ExamResultResponse result(Long userId, Long examId) {
         Exam exam = getOrThrow(examId);
@@ -263,7 +258,54 @@ public class ExamService {
         return toResultResponse(attempt, exam);
     }
 
+    /** Requirements section 38 Phase 5 ("History") - every concluded attempt across every exam, newest first. */
+    @Transactional(readOnly = true)
+    public PageResponse<ExamResultResponse> history(Long userId, Pageable pageable) {
+        Page<ExamAttempt> page = examAttemptRepository.findByUserIdAndStatusInOrderByIdDesc(userId, CONCLUDED_STATUSES, pageable);
+        return PageResponse.of(page, attempt -> toResultResponse(attempt, attempt.getExam()));
+    }
+
     // ---- helpers ----
+
+    /** Validates that every submitted examQuestionId/answerIds pair actually belongs to this exam. */
+    private Map<Long, Set<Long>> validateSubmissions(Exam exam, List<ExamAnswerSubmission> submissions) {
+        Map<Long, ExamQuestion> questionsById = exam.getQuestions().stream()
+                .collect(Collectors.toMap(ExamQuestion::getId, q -> q));
+
+        Map<Long, Set<Long>> submittedByQuestion = new HashMap<>();
+        for (ExamAnswerSubmission submission : submissions) {
+            ExamQuestion question = questionsById.get(submission.getExamQuestionId());
+            if (question == null) {
+                throw new InvalidRequestException("examQuestionId does not belong to this exam");
+            }
+            Set<Long> validAnswerIds = question.getExercise().getAnswers().stream()
+                    .map(ExerciseAnswer::getId)
+                    .collect(Collectors.toSet());
+            Set<Long> submittedIds = new HashSet<>(submission.getAnswerIds());
+            if (!validAnswerIds.containsAll(submittedIds)) {
+                throw new InvalidRequestException("One or more answerIds do not belong to this question");
+            }
+            submittedByQuestion.put(question.getId(), submittedIds);
+        }
+        return submittedByQuestion;
+    }
+
+    /** Replaces this attempt's stored answers wholesale - shared by submit() and saveProgress(). */
+    private void persistAnswers(ExamAttempt attempt, Exam exam, Map<Long, Set<Long>> submittedByQuestion) {
+        examAnswerRepository.deleteByExamAttemptId(attempt.getId());
+        for (ExamQuestion question : exam.getQuestions()) {
+            Set<Long> submittedIds = submittedByQuestion.getOrDefault(question.getId(), Set.of());
+            for (ExerciseAnswer answer : question.getExercise().getAnswers()) {
+                if (submittedIds.contains(answer.getId())) {
+                    examAnswerRepository.save(ExamAnswer.builder()
+                            .examAttempt(attempt)
+                            .examQuestion(question)
+                            .selectedAnswer(answer)
+                            .build());
+                }
+            }
+        }
+    }
 
     private boolean isExpired(ExamAttempt attempt, Exam exam) {
         LocalDateTime deadline = attempt.getStartedAt().plusMinutes(exam.getDurationMinutes());
@@ -271,6 +313,15 @@ public class ExamService {
     }
 
     private ExamAttemptResponse toAttemptResponse(ExamAttempt attempt, Exam exam) {
+        Map<Long, List<Long>> savedByQuestion = examAnswerRepository.findByExamAttemptId(attempt.getId()).stream()
+                .collect(Collectors.groupingBy(
+                        a -> a.getExamQuestion().getId(),
+                        Collectors.mapping(a -> a.getSelectedAnswer().getId(), Collectors.toList())
+                ));
+        List<SavedAnswerResponse> savedAnswers = savedByQuestion.entrySet().stream()
+                .map(e -> SavedAnswerResponse.builder().examQuestionId(e.getKey()).answerIds(e.getValue()).build())
+                .toList();
+
         return ExamAttemptResponse.builder()
                 .attemptId(attempt.getId())
                 .examId(exam.getId())
@@ -279,6 +330,7 @@ public class ExamService {
                 .startedAt(attempt.getStartedAt())
                 .status(attempt.getStatus())
                 .questions(exam.getQuestions().stream().map(examMapper::toQuestionResponse).toList())
+                .savedAnswers(savedAnswers)
                 .build();
     }
 

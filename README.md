@@ -174,22 +174,41 @@ soon" placeholder so the full route map from the spec is already wired up.
     the server to trust. `GET /result` returns the latest concluded
     (`COMPLETED` or `EXPIRED`) attempt, 404 if the learner hasn't finished
     one yet.
+  - **Auto save** (`PUT /api/exams/{id}/save`): persists whatever's
+    currently selected without grading or changing the attempt's status,
+    subject to the same BR-009 deadline check as submit. `start()` returns
+    whatever was last saved (`savedAnswers`) when it resumes a live attempt,
+    so a page refresh mid-exam restores prior selections instead of losing
+    them. `submit()` and `saveProgress()` share one validate/persist helper
+    internally so there's exactly one place that decides whether an
+    `examQuestionId`/`answerIds` pair is legal for a given exam.
+  - **History** (`GET /api/exams/attempts/history`): every concluded
+    attempt across every exam for the caller, newest first, paginated -
+    always scoped to the authenticated user, same as every other attempt
+    endpoint.
 - Frontend: `/admin/exams` is a standalone admin page (same reasoning as
   `/admin/exercises` - a dynamic `Form.List` of questions doesn't fit the
   generic `CrudManager`), where each question row is a searchable dropdown
   of existing exercises rather than an inline editor. `/exams` reuses
-  `LearningBrowsePage`; `/exams/:id` shows the exam summary with a Start
-  button, then switches in place to the question list with a live countdown
-  once started (auto-submitting at zero); `/exams/:id/result` shows the
-  score, correct/wrong counts, and a Retake button.
+  `LearningBrowsePage` (with a link to `/exams/history`); `/exams/:id` shows
+  the exam summary with a Start button, then switches in place to the
+  question list with a live countdown once started, debounce-autosaving
+  selections every ~1.5s and auto-submitting at zero; `/exams/:id/result`
+  shows the score, correct/wrong counts, and a Retake button;
+  `/exams/history` lists every past attempt with a link back to its result.
 - Integration tests: non-admin forbidden from admin exam endpoints, a draft
   exam is invisible to a regular user (404) but visible to an admin,
   starting a draft exam is rejected, starting twice resumes the same
   attempt, submitting computes partial-credit scoring correctly, submitting
   after the deadline (simulated by backdating the attempt's `startedAt`
   directly in the test rather than an actual multi-minute sleep) is
-  rejected and marks the attempt `EXPIRED`, and `GET /result` 404s with no
-  finished attempt and returns the right data after one.
+  rejected and marks the attempt `EXPIRED`, `GET /result` 404s with no
+  finished attempt and returns the right data after one, saving progress
+  then resuming (a second `start()` call) echoes the saved selection back,
+  saving past the deadline is rejected the same way submitting is, and
+  `GET /attempts/history` only ever returns the calling user's own
+  concluded attempts (verified against a second, freshly-registered user
+  with none).
 
 ## Project layout
 

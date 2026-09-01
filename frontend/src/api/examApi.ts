@@ -46,4 +46,14 @@ export const examApi = {
   getResult(id: number) {
     return apiClient.get<ApiResponse<ExamResult>>(`/exams/${id}/result`);
   },
+  /** Requirements section 38 Phase 5 ("Auto save") - safe to call repeatedly while an attempt is in progress. */
+  saveProgress(id: number, payload: SubmitExamRequest) {
+    return apiClient.put<ApiResponse<null>>(`/exams/${id}/save`, payload);
+  },
+  /** Requirements section 38 Phase 5 ("History") - every concluded attempt across every exam, newest first. */
+  getHistory(params: ListParams) {
+    return apiClient.get<ApiResponse<PageResponse<ExamResult>>>('/exams/attempts/history', {
+      params,
+    });
+  },
 };

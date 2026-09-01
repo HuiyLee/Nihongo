@@ -15,6 +15,11 @@ import java.util.List;
  * immediately followed by "Display questions"). The frontend computes its
  * own countdown from startedAt + durationMinutes; the backend never trusts
  * that countdown back (section 18: "backend must not trust the frontend timer").
+ *
+ * savedAnswers carries whatever was last written by PUT /{id}/save (or by a
+ * previous submit, defensively) - empty on a brand-new attempt, populated
+ * when start() resumes a live one, so the client can restore selections
+ * after a refresh instead of losing progress (section 38 Phase 5: "Auto save").
  */
 @Getter
 @Builder
@@ -28,4 +33,5 @@ public class ExamAttemptResponse {
     private LocalDateTime startedAt;
     private ExamAttemptStatus status;
     private List<ExamQuestionResponse> questions;
+    private List<SavedAnswerResponse> savedAnswers;
 }

@@ -22,6 +22,7 @@ import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -382,5 +383,127 @@ class ExamIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.score").value(100))
                 .andExpect(jsonPath("$.data.correctCount").value(2));
+    }
+
+    @Test
+    void autosave_thenResume_prefillsSavedAnswers() throws Exception {
+        JsonNode ex1 = createExercise("Q1");
+        JsonNode ex2 = createExercise("Q2");
+        JsonNode exam = createExam("PUBLISHED", 30, ex1.path("id").asLong(), ex2.path("id").asLong());
+        long examId = exam.path("id").asLong();
+
+        String startJson = mockMvc.perform(post("/api/exams/" + examId + "/start")
+                        .header("Authorization", "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode questions = objectMapper.readTree(startJson).path("data").path("questions");
+        long firstQuestionId = questions.get(0).path("id").asLong();
+        long firstExerciseId = questions.get(0).path("exercise").path("id").asLong();
+        JsonNode firstExercise = firstExerciseId == ex1.path("id").asLong() ? ex1 : ex2;
+        long chosenAnswerId = correctAnswerId(firstExercise);
+
+        // Save progress on just the first question - the second is left unanswered.
+        String saveBody = """
+                {
+                  "answers": [
+                    {"examQuestionId": %d, "answerIds": [%d]}
+                  ]
+                }
+                """.formatted(firstQuestionId, chosenAnswerId);
+        mockMvc.perform(put("/api/exams/" + examId + "/save")
+                        .header("Authorization", "Bearer " + userToken)
+                        .contentType("application/json")
+                        .content(saveBody))
+                .andExpect(status().isOk());
+
+        // Resuming (idempotent start) should echo the saved selection back so the client can pre-fill.
+        mockMvc.perform(post("/api/exams/" + examId + "/start")
+                        .header("Authorization", "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.savedAnswers[?(@.examQuestionId == " + firstQuestionId + ")].answerIds[0]")
+                        .value((int) chosenAnswerId));
+    }
+
+    @Test
+    void autosave_pastDeadline_isRejected() throws Exception {
+        JsonNode ex1 = createExercise("Q1");
+        JsonNode ex2 = createExercise("Q2");
+        JsonNode exam = createExam("PUBLISHED", 10, ex1.path("id").asLong(), ex2.path("id").asLong());
+        long examId = exam.path("id").asLong();
+
+        String startJson = mockMvc.perform(post("/api/exams/" + examId + "/start")
+                        .header("Authorization", "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        long examQuestionId = objectMapper.readTree(startJson).path("data").path("questions").get(0).path("id").asLong();
+
+        ExamAttempt attempt = examAttemptRepository
+                .findByUserIdAndExamIdAndStatus(userRepository.findByUsername("exam_user_" + testId).orElseThrow().getId(), examId, ExamAttemptStatus.IN_PROGRESS)
+                .orElseThrow();
+        attempt.setStartedAt(LocalDateTime.now().minusMinutes(20));
+        examAttemptRepository.save(attempt);
+
+        String saveBody = """
+                {
+                  "answers": [
+                    {"examQuestionId": %d, "answerIds": [%d]}
+                  ]
+                }
+                """.formatted(examQuestionId, correctAnswerId(ex1));
+
+        mockMvc.perform(put("/api/exams/" + examId + "/save")
+                        .header("Authorization", "Bearer " + userToken)
+                        .contentType("application/json")
+                        .content(saveBody))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void history_returnsOnlyCallersConcludedAttempts() throws Exception {
+        JsonNode ex1 = createExercise("Q1");
+        JsonNode ex2 = createExercise("Q2");
+        JsonNode examA = createExam("PUBLISHED", 30, ex1.path("id").asLong(), ex2.path("id").asLong());
+        JsonNode examB = createExam("PUBLISHED", 30, ex1.path("id").asLong(), ex2.path("id").asLong());
+
+        completeExam(examA.path("id").asLong(), ex1, ex2);
+        completeExam(examB.path("id").asLong(), ex1, ex2);
+
+        mockMvc.perform(get("/api/exams/attempts/history")
+                        .header("Authorization", "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalElements").value(2));
+
+        // A second, brand-new user must see none of the first user's history.
+        String otherUserToken = registerAndLogin("exam_other_" + testId, false);
+        mockMvc.perform(get("/api/exams/attempts/history")
+                        .header("Authorization", "Bearer " + otherUserToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalElements").value(0));
+    }
+
+    private void completeExam(long examId, JsonNode ex1, JsonNode ex2) throws Exception {
+        String startJson = mockMvc.perform(post("/api/exams/" + examId + "/start")
+                        .header("Authorization", "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode questions = objectMapper.readTree(startJson).path("data").path("questions");
+
+        StringBuilder answers = new StringBuilder();
+        for (int i = 0; i < questions.size(); i++) {
+            JsonNode q = questions.get(i);
+            long exerciseId = q.path("exercise").path("id").asLong();
+            JsonNode exercise = exerciseId == ex1.path("id").asLong() ? ex1 : ex2;
+            if (i > 0) {
+                answers.append(",");
+            }
+            answers.append("{\"examQuestionId\":").append(q.path("id").asLong())
+                    .append(",\"answerIds\":[").append(correctAnswerId(exercise)).append("]}");
+        }
+
+        mockMvc.perform(post("/api/exams/" + examId + "/submit")
+                        .header("Authorization", "Bearer " + userToken)
+                        .contentType("application/json")
+                        .content("{\"answers\":[" + answers + "]}"))
+                .andExpect(status().isOk());
     }
 }
