@@ -2,6 +2,21 @@ import type { ContentStatus } from './content';
 import type { AdminExercise, Exercise } from './exercise';
 
 /**
+ * One question's full answer key, returned only for a concluded attempt
+ * (ExamResult.questions from submit()/getResult() - never on the history
+ * list, and never while the exam is still in progress). Reuses AdminExercise
+ * so isCorrect is available on every answer option, same shape the admin
+ * editor uses.
+ */
+export interface ExamQuestionReview {
+  examQuestionId: number;
+  orderIndex: number;
+  exercise: AdminExercise;
+  selectedAnswerIds: number[];
+  correct: boolean;
+}
+
+/**
  * Requirements section 17.1. Public/learner view is flat - no nested
  * questions - so browsing a list of exams can never leak isCorrect; the
  * question list only appears once a learner actually starts the exam
@@ -107,4 +122,6 @@ export interface ExamResult {
   totalQuestions: number;
   startedAt: string;
   submittedAt?: string;
+  /** Absent on history-list rows; present on submit()/getResult()'s single-attempt response. */
+  questions?: ExamQuestionReview[];
 }

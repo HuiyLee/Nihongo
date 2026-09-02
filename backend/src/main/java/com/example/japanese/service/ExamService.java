@@ -7,6 +7,7 @@ import com.example.japanese.dto.request.StudySessionRequest;
 import com.example.japanese.dto.request.SubmitExamRequest;
 import com.example.japanese.dto.response.AdminExamResponse;
 import com.example.japanese.dto.response.ExamAttemptResponse;
+import com.example.japanese.dto.response.ExamQuestionReviewResponse;
 import com.example.japanese.dto.response.ExamResponse;
 import com.example.japanese.dto.response.ExamResultResponse;
 import com.example.japanese.dto.response.PageResponse;
@@ -260,7 +261,7 @@ public class ExamService {
         session.setEndedAt(attempt.getSubmittedAt());
         studySessionService.record(userId, session);
 
-        return toResultResponse(attempt, exam);
+        return toResultResponse(attempt, exam, true);
     }
 
     /**
@@ -291,7 +292,7 @@ public class ExamService {
         ExamAttempt attempt = examAttemptRepository
                 .findFirstByUserIdAndExamIdAndStatusInOrderByIdDesc(userId, examId, CONCLUDED_STATUSES)
                 .orElseThrow(() -> new ResourceNotFoundException("No completed attempt found for this exam"));
-        return toResultResponse(attempt, exam);
+        return toResultResponse(attempt, exam, true);
     }
 
     /** Requirements section 38 Phase 5 ("History") - every concluded attempt across every exam, newest first. */
@@ -374,7 +375,31 @@ public class ExamService {
                 .build();
     }
 
+    /** History listing - aggregate score only, no per-question answer key (keeps each page light). */
     private ExamResultResponse toResultResponse(ExamAttempt attempt, Exam exam) {
+        return toResultResponse(attempt, exam, false);
+    }
+
+    /**
+     * includeReview=true attaches the full per-question answer key ("đáp án")
+     * - what the learner picked vs. the correct answer(s) for every question -
+     * used by submit() and the single-attempt result() endpoint. History
+     * listing skips it (see the two-arg overload above) since it would repeat
+     * every question's full exercise+answers payload once per past attempt.
+     */
+    private ExamResultResponse toResultResponse(ExamAttempt attempt, Exam exam, boolean includeReview) {
+        List<ExamQuestionReviewResponse> questions = null;
+        if (includeReview) {
+            Map<Long, Set<Long>> selectedByQuestion = examAnswerRepository.findByExamAttemptId(attempt.getId()).stream()
+                    .collect(Collectors.groupingBy(
+                            a -> a.getExamQuestion().getId(),
+                            Collectors.mapping(a -> a.getSelectedAnswer().getId(), Collectors.toSet())
+                    ));
+            questions = exam.getQuestions().stream()
+                    .map(q -> examMapper.toReviewQuestionResponse(q, selectedByQuestion.getOrDefault(q.getId(), Set.of())))
+                    .toList();
+        }
+
         return ExamResultResponse.builder()
                 .attemptId(attempt.getId())
                 .examId(exam.getId())
@@ -386,6 +411,7 @@ public class ExamService {
                 .totalQuestions(exam.getTotalQuestions())
                 .startedAt(attempt.getStartedAt())
                 .submittedAt(attempt.getSubmittedAt())
+                .questions(questions)
                 .build();
     }
 
