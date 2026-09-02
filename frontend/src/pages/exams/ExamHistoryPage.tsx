@@ -7,6 +7,7 @@ import { examApi } from '../../api/examApi';
 import { ErrorState } from '../../components/ErrorState';
 import { EmptyState } from '../../components/EmptyState';
 import { getErrorMessage } from '../../utils/errors';
+import { parseServerDateTime } from '../../utils/serverDate';
 import type { ExamResult } from '../../types/exam';
 
 const { Title } = Typography;
@@ -59,7 +60,7 @@ export default function ExamHistoryPage() {
       title: 'Submitted',
       dataIndex: 'submittedAt',
       width: 180,
-      render: (value?: string) => (value ? new Date(value).toLocaleString() : '-'),
+      render: (value?: string) => (value ? parseServerDateTime(value).toLocaleString() : '-'),
     },
     {
       title: '',

@@ -317,7 +317,11 @@ public class ExamService {
             Set<Long> validAnswerIds = question.getExercise().getAnswers().stream()
                     .map(ExerciseAnswer::getId)
                     .collect(Collectors.toSet());
-            Set<Long> submittedIds = new HashSet<>(submission.getAnswerIds());
+            // answerIds is allowed to be null/empty (ExamAnswerSubmission - an
+            // unanswered question is a normal submission, not a validation error).
+            Set<Long> submittedIds = submission.getAnswerIds() == null
+                    ? new HashSet<>()
+                    : new HashSet<>(submission.getAnswerIds());
             if (!validAnswerIds.containsAll(submittedIds)) {
                 throw new InvalidRequestException("One or more answerIds do not belong to this question");
             }

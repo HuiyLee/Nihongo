@@ -19,6 +19,7 @@ import { AudioPlayer } from '../../components/learning/AudioPlayer';
 import { LoadingState } from '../../components/LoadingState';
 import { ErrorState } from '../../components/ErrorState';
 import { getErrorMessage } from '../../utils/errors';
+import { parseServerDateTime } from '../../utils/serverDate';
 import { SELECTABLE_EXERCISE_TYPES } from '../../types/exercise';
 import type { Exam, ExamAttempt } from '../../types/exam';
 
@@ -96,7 +97,7 @@ export default function ExamAttemptPage() {
     if (!attempt) {
       return;
     }
-    const deadline = new Date(attempt.startedAt).getTime() + attempt.durationMinutes * 60_000;
+    const deadline = parseServerDateTime(attempt.startedAt).getTime() + attempt.durationMinutes * 60_000;
 
     const tick = () => {
       const secondsLeft = Math.max(0, Math.round((deadline - Date.now()) / 1000));

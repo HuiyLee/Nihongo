@@ -6,6 +6,7 @@ import { examApi } from '../../api/examApi';
 import { LoadingState } from '../../components/LoadingState';
 import { ErrorState } from '../../components/ErrorState';
 import { getErrorMessage } from '../../utils/errors';
+import { parseServerDateTime } from '../../utils/serverDate';
 import type { ExamResult } from '../../types/exam';
 
 export default function ExamResultPage() {
@@ -52,7 +53,7 @@ export default function ExamResultPage() {
           subTitle={
             result.status === 'EXPIRED'
               ? 'Time ran out before this attempt was submitted.'
-              : `Completed ${result.submittedAt ? new Date(result.submittedAt).toLocaleString() : ''}`
+              : `Completed ${result.submittedAt ? parseServerDateTime(result.submittedAt).toLocaleString() : ''}`
           }
         />
         <Row gutter={16} style={{ textAlign: 'center', marginBottom: 24 }}>
