@@ -38,7 +38,11 @@ public class SecurityConfig {
             "/api/auth/register",
             "/api/auth/login",
             "/api/auth/refresh",
-            "/actuator/health"
+            "/actuator/health",
+            // Static listening/pronunciation audio (backend/src/main/resources/static/audio/**).
+            // Native <audio> elements can't attach an Authorization header, so this has to be
+            // publicly reachable - it's just practice-clip audio, nothing sensitive.
+            "/audio/**"
     };
 
     @Bean
